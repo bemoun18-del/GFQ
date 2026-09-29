@@ -1,0 +1,2008 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GFQ — simulation bancaire</title>
+<style>
+  :root{
+    --forest:#134C42;
+    --forest-dark:#0C332C;
+    --forest-light:#E6EEEB;
+    --gold:#C89B3C;
+    --gold-light:#F6EDD8;
+    --bg:#F6F4EF;
+    --card:#FFFFFF;
+    --border:#E4E1D8;
+    --text:#1E2723;
+    --text-secondary:#6B776F;
+    --text-muted:#9BA39D;
+    --ok:#2F6B4F;
+    --radius:14px;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --serif: Georgia, "Times New Roman", serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:24px 12px 40px;-webkit-font-smoothing:antialiased}
+  .phone{width:100%;max-width:400px;background:var(--card);border-radius:28px;border:1px solid var(--border);overflow:hidden;box-shadow:0 20px 50px rgba(19,76,66,0.08);position:relative}
+  header.topbar{background:var(--forest);color:#fff;padding:20px 20px 24px}
+  .topbar-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:500;letter-spacing:0.2px}
+  .brand-mark{width:26px;height:26px;border-radius:8px;background:var(--gold);display:flex;align-items:center;justify-content:center;color:var(--forest-dark);font-weight:700;font-size:13px;font-family:var(--serif)}
+  .sim-tag{font-size:10px;background:rgba(255,255,255,0.15);padding:3px 8px;border-radius:20px;letter-spacing:.3px}
+  .greeting{font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:2px}
+  .total-label{font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:4px}
+  .total-amount{font-family:var(--serif);font-size:36px;font-weight:400;letter-spacing:-0.5px}
+  main{padding:20px;min-height:480px}
+  .view{display:none}
+  .view.active{display:block}
+  .section-title{font-size:14px;font-weight:500;color:var(--text);margin:20px 0 10px}
+  .section-title:first-child{margin-top:0}
+  .section-hint{font-size:12px;color:var(--text-secondary);margin:-6px 0 12px;line-height:1.5}
+  .quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:-32px;margin-bottom:8px;position:relative;z-index:2}
+  .qa-btn{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:var(--sans);font-size:11px;color:var(--text);box-shadow:0 6px 16px rgba(19,76,66,0.06)}
+  .qa-icon{width:34px;height:34px;border-radius:50%;background:var(--forest-light);display:flex;align-items:center;justify-content:center;color:var(--forest);font-size:16px}
+  .account-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .acct-group{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:14px;background:var(--card)}
+  .acct-group-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--border)}
+  .acct-group-title{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--forest);text-transform:uppercase;letter-spacing:.3px}
+  .acct-group-total{font-family:var(--serif);font-size:15px;color:var(--text)}
+  .acct-row{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border)}
+  .acct-row:last-child{border-bottom:none}
+  .acct-row-name{font-size:14px;font-weight:500}
+  .acct-row-sub{font-size:11px;color:var(--text-secondary);margin-top:1px}
+  .acct-row-balance{font-family:var(--serif);font-size:16px;text-align:right;white-space:nowrap}
+  .account-name{font-size:14px;font-weight:500;margin-bottom:2px}
+  .account-sub{font-size:12px;color:var(--text-secondary)}
+  .account-subtotal{font-size:11px;color:var(--text-muted);margin-top:1px}
+  .account-balance-unit{font-size:11px;color:var(--text-secondary);font-family:var(--sans);margin-left:2px}
+  .bonif-tag{color:var(--ok);font-weight:600}
+  .account-balance{font-family:var(--serif);font-size:18px;text-align:right}
+  .tx-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+  .tx-row:last-child{border-bottom:none}
+  .tx-icon{width:32px;height:32px;border-radius:50%;background:var(--forest-light);display:flex;align-items:center;justify-content:center;color:var(--forest);font-size:14px;margin-right:10px;flex-shrink:0}
+  .tx-left{display:flex;align-items:center}
+  .tx-desc{font-size:13px;font-weight:500}
+  .tx-date{font-size:12px;color:var(--text-muted)}
+  .tx-amount{font-size:13px;font-weight:500;white-space:nowrap}
+  .tx-amount.neg{color:var(--text)}
+  .tx-amount.pos{color:var(--forest)}
+  .tx-empty{font-size:13px;color:var(--text-muted);padding:14px 0;text-align:center}
+  label.field-label{display:block;font-size:12px;color:var(--text-secondary);margin-bottom:6px}
+  select, input[type=number], input[type=text]{width:100%;border:1px solid var(--border);background:var(--bg);border-radius:10px;padding:11px 12px;font-size:14px;font-family:var(--sans);color:var(--text);margin-bottom:16px}
+  .amount-input{font-family:var(--serif);font-size:22px;text-align:center;padding:14px}
+  .btn-primary{width:100%;background:var(--forest);color:#fff;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:500;font-family:var(--sans)}
+  .error-text{color:#B3432E;font-size:12px;margin:-10px 0 14px}
+  .confirm-box{background:var(--forest-light);border-radius:var(--radius);padding:16px;text-align:center;margin-top:14px;display:none}
+  .confirm-box.show{display:block}
+  .confirm-box .big{font-family:var(--serif);font-size:24px;margin:6px 0}
+  .tier-card{background:var(--forest);color:#fff;border-radius:var(--radius);padding:18px;margin-bottom:16px}
+  .tier-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+  .tier-name{font-size:18px;font-weight:500}
+  .tier-badge{background:var(--gold);color:var(--forest-dark);font-size:12px;font-weight:500;padding:4px 10px;border-radius:20px;display:inline-block}
+  .tier-badge.pulse{animation:pulseScale .6s ease}
+  @keyframes pulseScale{0%{transform:scale(1)}35%{transform:scale(1.18)}100%{transform:scale(1)}}
+  .pts-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+  .pts-amount{font-family:var(--serif);font-size:22px}
+  .pts-next{font-size:12px;color:rgba(255,255,255,0.75)}
+  .lock-note{font-size:11px;color:#F0C9C0;margin-top:8px}
+  .adv-row{display:flex;align-items:flex-start;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;font-size:12.5px}
+  .adv-row .adv-check{color:var(--forest);flex-shrink:0}
+  .bar-track{height:6px;border-radius:3px;background:rgba(255,255,255,0.2);overflow:hidden}
+  .bar-fill{height:100%;background:var(--gold);border-radius:3px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+  .cat-title{font-size:12px;font-weight:600;color:var(--forest);text-transform:uppercase;letter-spacing:.4px;margin:16px 0 8px}
+  .cat-title-row{display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 8px}
+  .cat-total{font-family:var(--serif);font-size:14px;color:var(--text)}
+  .cat-title:first-child{margin-top:0}
+  .detect-row{display:flex;align-items:flex-start;gap:10px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px}
+  .detect-icon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:1px}
+  .detect-icon.yes{background:var(--forest-light);color:var(--ok)}
+  .detect-icon.no{background:var(--bg);color:var(--text-muted);border:1px solid var(--border)}
+  .detect-text{flex:1}
+  .detect-label{font-size:12.5px;font-weight:500}
+  .detect-pts{font-size:12px;color:var(--text-secondary);white-space:nowrap;margin-top:1px}
+  .req-tag{color:var(--text-muted);font-size:11px}
+  .detect-row.flash{animation:flashRow 1.4s ease}
+  .detect-row.done{border-color:var(--ok);background:rgba(47,107,79,0.06)}
+  .detect-row.done .detect-label{color:var(--ok)}
+  .detect-row.done .detect-pts{color:var(--ok);font-weight:600}
+  @keyframes flashRow{0%{background:var(--gold-light);border-color:var(--gold)}100%{background:transparent;border-color:var(--border)}}
+  .perk-card{background:var(--gold-light);border-radius:var(--radius);padding:14px 16px}
+  .perk-item{display:flex;gap:8px;font-size:13px;padding:5px 0;color:var(--text)}
+  .perk-dot{color:var(--gold);font-weight:700}
+  .link-btn{width:100%;background:none;border:1px solid var(--border);border-radius:10px;padding:12px;font-size:13px;font-weight:500;color:var(--forest);font-family:var(--sans);margin-top:4px}
+  .back-btn{background:none;border:none;font-size:13px;color:var(--forest);font-family:var(--sans);font-weight:500;padding:0}
+  .niveau-card{border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px}
+  .niveau-card.current{border-color:var(--gold);background:var(--gold-light)}
+  .niveau-card{transition:opacity .4s ease, transform .4s ease, box-shadow .4s ease, border-color .4s ease}
+  .niveau-card.spotlight{border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,155,60,0.3);transform:scale(1.02);opacity:1}
+  .niveau-card.dim{opacity:.35}
+  .cat-group{transition:opacity .4s ease, box-shadow .4s ease, background .4s ease;border-radius:10px}
+  .cat-group.dim{opacity:.3}
+  .cat-group.spotlight{background:var(--gold-light);box-shadow:0 0 0 2px var(--gold);padding:6px;margin:-6px -6px 10px -6px}
+  .bilan-item.dim{opacity:.3}
+  .bilan-item.spotlight{border-color:var(--gold);box-shadow:0 0 0 2px rgba(200,155,60,0.3);transform:scale(1.02)}
+  .niveau-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .niveau-name{font-size:14px;font-weight:500}
+  .niveau-range{font-size:11px;color:var(--text-secondary)}
+  .niveau-badge{background:var(--forest);color:#fff;font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px}
+  .niveau-badge.current{background:var(--gold);color:var(--forest-dark)}
+  .niveau-you{font-size:10px;color:var(--forest-dark);background:var(--gold);border-radius:20px;padding:2px 8px;font-weight:600;margin-left:6px}
+  .niveau-perk{font-size:12px;color:var(--text);padding:2px 0}
+  .gest-hero{background:linear-gradient(160deg,#134C42,#0C332C);color:#fff;border-radius:var(--radius);padding:18px 16px;margin-bottom:16px;text-align:center}
+  .gest-line{font-size:15px}
+  .kpi-grid{display:flex;flex-direction:column;gap:8px}
+  .kpi-card{border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;display:flex;align-items:center;gap:12px}
+  .kpi-value{font-family:var(--serif);font-size:22px;color:var(--forest);white-space:nowrap}
+  .kpi-label{font-size:11.5px;color:var(--text-secondary);line-height:1.4}
+  .dist-row{margin-bottom:10px}
+  .dist-top{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+  .dist-name{font-weight:500;color:var(--text)}
+  .dist-pct{color:var(--text-secondary)}
+  .dist-track{height:8px;border-radius:4px;background:var(--bg);border:1px solid var(--border);overflow:hidden}
+  .dist-fill{height:100%;background:var(--forest);border-radius:4px}
+  .adopt-row{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);border-radius:10px;padding:9px 12px;margin-bottom:6px;font-size:12.5px}
+  .adopt-pct{color:var(--forest);font-weight:600;white-space:nowrap}
+  .cat-block{border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px}
+  .cat-block-title{font-size:13px;font-weight:600;color:var(--forest);margin-bottom:6px}
+  .cat-item{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:4px 0;border-top:1px solid var(--border)}
+  .cat-item:first-of-type{border-top:none}
+  .cat-item-label{color:var(--text)}
+  .cat-item-pts{color:var(--text-secondary);white-space:nowrap}  .profile-row{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid var(--border);font-size:14px}
+  .profile-row:last-of-type{border-bottom:none}
+  .toggle{width:40px;height:22px;border-radius:11px;background:var(--border);position:relative;flex-shrink:0}
+  .toggle.on{background:var(--forest)}
+  .toggle-dot{width:18px;height:18px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px}
+  .toggle.on .toggle-dot{left:20px}
+  nav.tabbar{display:flex;border-top:1px solid var(--border);background:var(--card)}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 12px;font-size:10px;color:var(--text-muted);background:none;border:none;font-family:var(--sans)}
+  .tab.active{color:var(--forest)}
+  .tab-icon{font-size:18px;line-height:1}
+  .action-row{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-bottom:8px}
+  .action-label{font-size:13px;font-weight:500;margin-bottom:2px}
+  .action-sub{font-size:11px;color:var(--text-secondary)}
+  .done-tag{font-size:12px;color:var(--ok);font-weight:500}
+  .btn-small{background:var(--forest);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:500;font-family:var(--sans);white-space:nowrap}
+  .sim-overlay{position:absolute;inset:0;background:rgba(12,51,44,0.6);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s ease;z-index:50;border-radius:28px;padding:24px}
+  .sim-overlay.show{opacity:1;pointer-events:auto}
+  .sim-modal{background:#fff;border-radius:16px;padding:22px 20px;width:100%;max-width:280px;box-shadow:0 12px 30px rgba(0,0,0,0.2)}
+  .sim-modal-title{font-size:15px;font-weight:500;text-align:center;line-height:1.4}
+  .sim-modal-cat{font-size:11px;color:var(--text-secondary);text-align:center;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
+  .sim-modal-body{margin-top:14px;display:flex;flex-direction:column;gap:2px}
+  .sim-line{opacity:0;animation:simLineIn .4s ease forwards;font-size:13px;color:var(--text);padding:4px 0}
+  @keyframes simLineIn{to{opacity:1}}
+  .sim-counter{font-family:var(--serif);font-size:28px;text-align:center;color:var(--forest);font-variant-numeric:tabular-nums}
+  .sim-sub{font-size:12px;color:var(--text-secondary);text-align:center;margin-top:6px}
+  .ai-bubble{padding:10px 12px;border-radius:14px;font-size:13px;line-height:1.4;margin-top:10px}
+  .ai-bubble-user{background:var(--forest-light);color:var(--forest-dark);margin-left:26px;border-bottom-right-radius:4px}
+  .ai-bubble-ai{background:var(--gold-light);color:var(--text);margin-right:10px;border-bottom-left-radius:4px}
+  .tier-modal{background:linear-gradient(160deg,#134C42,#0C332C);color:#fff;text-align:center}
+  .tier-modal-badge{display:inline-block;background:var(--gold);color:var(--forest-dark);font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px}
+  .tier-modal .sim-modal-title{color:#fff;font-size:16px}
+  .tier-modal .sim-line{color:#F6EDD8;text-align:left}
+  .top-ctrl{position:absolute;top:16px;right:16px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;max-width:70%;z-index:60}
+  .ctrl-btn{display:none;background:var(--forest-dark);color:#fff;border:none;border-radius:20px;padding:8px 12px;font-size:11px;font-family:var(--sans);font-weight:500;white-space:nowrap;box-shadow:0 8px 20px rgba(0,0,0,0.25)}
+  .ctrl-btn.show{display:block}
+
+  @media (max-width: 480px){
+    body{ padding:0; }
+    .phone{
+      max-width:100%;
+      width:100%;
+      height:100vh;
+      height:100dvh;
+      border-radius:0;
+      border:none;
+      box-shadow:none;
+      display:flex;
+      flex-direction:column;
+    }
+    header.topbar{ flex-shrink:0; }
+    main{
+      flex:1 1 auto;
+      min-height:0;
+      overflow-y:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+    nav.tabbar{ flex-shrink:0; }
+    .sim-overlay{ border-radius:0; }
+    .top-ctrl{ top:56px; }
+  }
+
+  .bilan-total-card{background:linear-gradient(160deg,#134C42,#0C332C);color:#fff;border-radius:var(--radius);padding:20px 16px;text-align:center;margin-bottom:8px}
+  .bilan-total-label{font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:6px}
+  .bilan-total-amount{font-family:var(--serif);font-size:34px}
+  .bilan-total-sub{font-size:12px;color:var(--gold);margin-top:6px}
+  .bilan-item{border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-bottom:8px}
+  .bilan-item-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .bilan-item-label{font-size:13px;font-weight:500}
+  .bilan-item-amount{font-family:var(--serif);font-size:16px;color:var(--forest);white-space:nowrap}
+  .bilan-item-formula{font-size:11px;color:var(--text-secondary);margin-top:2px}
+  .bilan-qual-item{font-size:12.5px;color:var(--text);padding:5px 0;border-top:1px solid var(--border)}
+  .bilan-qual-item:first-child{border-top:none}
+  .budget-card{border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px}
+  .budget-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+  .budget-row:last-of-type{border-bottom:none}
+  .budget-row label{font-size:13px;color:var(--text)}
+  .budget-row input{width:90px;text-align:right;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;font-family:var(--sans);margin:0;color:var(--text)}
+  .budget-summary{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-weight:600;font-size:13px}
+  .budget-summary .amount{font-family:var(--serif);font-size:19px}
+  .budget-ecart-card{border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;text-align:center}
+  .budget-ecart-label{font-size:12px;color:var(--text-secondary)}
+  .budget-ecart-amount{font-family:var(--serif);font-size:26px;margin:4px 0}
+  .budget-ecart-amount.over{color:#B3432E}
+  .budget-ecart-amount.under{color:var(--ok)}
+  .budget-ecart-sub{font-size:11px;color:var(--text-muted)}
+  .budget-cat-header{display:grid;grid-template-columns:1fr 90px 90px;gap:8px;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:6px}
+  .budget-cat-row{display:grid;grid-template-columns:1fr 90px 90px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+  .budget-cat-row:last-child{border-bottom:none}
+  .budget-cat-row label{font-size:13px}
+  .budget-cat-row input{width:100%;text-align:right;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;font-family:var(--sans);margin:0;color:var(--text)}
+  .budget-cat-row input.reel-over{border-color:#B3432E;color:#B3432E}
+  .budget-visual-card{background:linear-gradient(160deg,#134C42,#0C332C);color:#fff;border-radius:var(--radius);padding:18px 16px;margin-bottom:16px}
+  .budget-remaining-label{font-size:12px;color:rgba(255,255,255,0.7);text-align:center}
+  .budget-remaining-amount{font-family:var(--serif);font-size:32px;text-align:center;margin:4px 0 14px}
+  .budget-bar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:rgba(255,255,255,0.12)}
+  .budget-bar-seg{height:100%}
+  .budget-legend{display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:12px}
+  .budget-legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,0.85)}
+  .budget-legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+  .budget-tip{display:flex;gap:8px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:12.5px;line-height:1.5}
+  .budget-tip-icon{flex-shrink:0}
+  .budget-tip.warn{border-color:#E3B98A;background:#FBF3E8}
+  .budget-tip.good{border-color:var(--forest-light);background:var(--forest-light)}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <div class="sim-overlay" id="simOverlay"><div class="sim-modal" id="simModal"></div></div>
+  <div class="top-ctrl">
+    <button class="ctrl-btn show" id="iaBtn" onclick="openAIChat()">💬 IA</button>
+    <button class="ctrl-btn" id="skipBtn" onclick="skipToEnd()">⏭ Fin</button>
+    <button class="ctrl-btn" id="stopBtn" onclick="requestStop()">⏹ Arrêter</button>
+    <button class="ctrl-btn" id="restartBtn" onclick="runSimulation()">↻ Recommencer</button>
+    <button class="ctrl-btn" id="replayBtn" onclick="runSimulation()">↻ Rejouer</button>
+  </div>
+
+  <header class="topbar">
+    <div class="topbar-row">
+      <div class="brand"><span class="brand-mark">G</span>GFQ</div>
+    </div>
+    <div class="greeting">Bonjour, Marie-Jeanne</div>
+    <div style="display:none">
+      <div class="total-label">Solde total</div>
+      <div class="total-amount" id="totalAmount">0,00 $</div>
+    </div>
+  </header>
+
+  <main>
+
+    <div class="view active" id="view-comptes">
+      <div class="section-title">Mes comptes</div>
+      <div id="accountsList"></div>
+
+
+      <div class="section-title">Transactions récentes</div>
+      <div id="txList"></div>
+    </div>
+
+    <div class="view" id="view-budget">
+      <div class="section-title">Outil budgétaire</div>
+      <div class="section-hint">Suis tes revenus et dépenses chaque mois.</div>
+
+      <div class="budget-visual-card">
+        <div class="budget-remaining-label">Solde restant en fin de mois (budgété)</div>
+        <div class="budget-remaining-amount" id="budgetRemaining">-</div>
+        <div class="budget-bar" id="budgetBar"></div>
+        <div class="budget-legend" id="budgetLegend"></div>
+      </div>
+
+      <div class="budget-ecart-card">
+        <div class="budget-ecart-label">Écart ce mois-ci (réel vs budgété)</div>
+        <div class="budget-ecart-amount" id="budgetEcartTotal">-</div>
+        <div class="budget-ecart-sub" id="budgetEcartNote"></div>
+      </div>
+
+      <div class="section-title">Conseils</div>
+      <div id="budgetTips"></div>
+
+      <div class="section-title">Mes revenus et dépenses</div>
+      <div class="budget-card">
+        <div class="budget-row"><label for="budgetIncome">Revenu mensuel</label><input type="number" id="budgetIncome" value="1840" oninput="recalcBudget()"></div>
+      </div>
+
+      <div class="budget-card">
+        <div class="budget-cat-header"><span></span><span>Budgété</span><span>Réel</span></div>
+        <div id="budgetCatRows"></div>
+      </div>
+
+      <button class="btn-primary" onclick="saveBudget()">Confirmer mon budget mensuel</button>
+      <div class="section-hint" id="budgetSavedNote" style="margin:8px 0 0;display:none">Budget enregistré ✓ — dernière mise à jour : <span id="budgetSavedDate"></span></div>
+    </div>
+
+    <div class="view" id="view-statut">
+      <div class="tier-card" onclick="goTo('recommandations')" style="cursor:pointer">
+        <div class="tier-top">
+          <div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:2px">Mon statut →</div>
+            <div class="tier-name" id="tierName">Fondation</div>
+          </div>
+          <div class="tier-badge" id="tierBadge">Niveau 0</div>
+        </div>
+        <div class="pts-row">
+          <span class="pts-amount" id="ptsAmount">0 pt</span>
+          <span class="pts-next" id="nextLabel">40 pts pour le niveau 1</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="barFill" style="width:0%"></div></div>
+        <div class="lock-note" id="lockNote">Le dépôt de salaire est obligatoire pour débloquer les autres niveaux.</div>
+      </div>
+
+      <button class="link-btn" onclick="goTo('recommandations')">Passer à l'action →</button>
+
+      <div class="section-title">Tes avantages</div>
+      <div class="section-hint">Ce que ton niveau actuel te donne.</div>
+      <div id="statutAdvantages"></div>
+
+      <div class="section-title">Comportements détectés</div>
+      <div class="section-hint">Reconnus automatiquement à partir de l'activité du compte.</div>
+      <div id="detectList"></div>
+    </div>
+
+    <div class="view" id="view-bilan">
+      <div class="section-title">Bilan annuel — 31 décembre</div>
+      <div class="section-hint">Ce que ton statut t'a rapporté concrètement cette année.</div>
+
+      <div class="bilan-total-card">
+        <div class="bilan-total-label">Valeur générée en 2026</div>
+        <div class="bilan-total-amount" id="bilanTotal">0,00 $</div>
+        <div class="bilan-total-sub" id="bilanTierNote">Statut Fondation</div>
+      </div>
+
+      <div class="section-title">Détail par avantage</div>
+      <div id="bilanItems"></div>
+
+      <div class="section-title">Avantages non chiffrés</div>
+      <div class="section-hint">Une valeur réelle, mais difficile à traduire en dollars.</div>
+      <div id="bilanQualitatifs"></div>
+
+      <div class="section-hint" style="margin-top:14px">Estimations à des fins de démonstration, basées sur ton statut actuel et tes actifs déclarés.</div>
+    </div>
+
+    <div class="view" id="view-recommandations">
+      <button class="back-btn" onclick="goTo('statut')">← Retour au statut</button>
+      <div class="section-title" style="margin-top:14px">Passer à l'action</div>
+      <div class="section-hint" id="recoSummary">Chargement...</div>
+
+      <div class="section-title">Faciles à adopter</div>
+      <div class="section-hint">Des actions simples, en une seule fois.</div>
+      <div id="recoFacile"></div>
+
+      <div class="section-title">Demandent un peu de constance</div>
+      <div class="section-hint">Des comportements à maintenir dans le temps.</div>
+      <div id="recoSoutenu"></div>
+
+      <div class="section-title">Appuie sur « Faire »</div>
+      <div class="section-hint">Simule chaque comportement toi-même.</div>
+      <div id="actionsList"></div>
+    </div>
+
+    <div class="view" id="view-niveaux">
+      <div class="section-title">Niveaux d'engagement</div>
+      <div class="section-hint">Les 5 paliers, du point 0 au point 300.</div>
+      <div id="niveauxList"></div>
+    </div>
+
+    <div class="view" id="view-forfaits">
+      <div class="section-title">Forfaits</div>
+      <div class="section-hint">Les 2 forfaits de base, avant rabais ou gratuité liés au statut.</div>
+      <div id="forfaitsList"></div>
+    </div>
+
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab active" data-tab="comptes" onclick="goTo('comptes')"><span class="tab-icon">⊞</span>Comptes</button>
+    <button class="tab" data-tab="statut" onclick="goTo('statut')"><span class="tab-icon">★</span>Statut</button>
+    <button class="tab" data-tab="bilan" onclick="goTo('bilan')"><span class="tab-icon">$</span>Bilan</button>
+    <button class="tab" data-tab="niveaux" onclick="goTo('niveaux')"><span class="tab-icon">◆</span>Niveaux</button>
+    <button class="tab" data-tab="budget" onclick="goTo('budget')"><span class="tab-icon">📊</span>Budget</button>
+    <button class="tab" data-tab="forfaits" onclick="goTo('forfaits')"><span class="tab-icon">▤</span>Forfaits</button>
+  </nav>
+
+</div>
+
+<script>
+let accounts, transactions, flags;
+let prevPts = null, prevDetectOk = null;
+
+const COUSSIN_CIBLE = 1000.00;
+
+const tiers = [
+  {min:30, max:59, name:'Fondation', level:0, perks:['Forfait de base gratuit','Réduction du forfait illimité de 4 $']},
+  {min:60, max:119, name:'Engagement', level:1, perks:['Forfait illimité gratuit','Bonification du compte d\u2019épargne +0,75 %']},
+  {min:120, max:179, name:'Progression', level:2, perks:['Forfait illimité gratuit','Bonification du compte d\u2019épargne +1 %','Cartes prestige -25 $']},
+  {min:180, max:239, name:'Équilibre', level:3, perks:['Forfait illimité gratuit','Bonification du compte d\u2019épargne +1,5 %','Cartes prestige -50 $','Assurances -5 %']},
+  {min:240, max:300, name:'Partenaire', level:4, perks:['Forfait illimité gratuit','Bonification du compte d\u2019épargne +2 %','Carte prestige gratuite','Assurances -15 % (rabais employé)','Hypo. / marge -0,25 %']}
+];
+
+const epargnePlacementTable = {
+  '10k-': {label:'Moins de 9 999 $', pts:5},
+  '10k-49999': {label:'10 k$ à 49 999 $', pts:10},
+  '50k-99999': {label:'50 k$ à 99 999 $', pts:15},
+  '100k-249999': {label:'100 k$ à 249 999 $', pts:20},
+  '250k-499999': {label:'250 k$ à 499 999 $', pts:40},
+  '500k+': {label:'500 k$ et plus', pts:50}
+};
+
+const EFFORT_FACILE = new Set(['relationActive','prelevementAuto','formation','outilBudgetaire','viecoop','parrainage','relevesVirtuels','coussin25']);
+
+const forfaits = [
+  {name:'Forfait économe', price:'4 $', unit:'/ mois', desc:'18 transactions incluses par mois.'},
+  {name:'Forfait illimité', price:'10 $', unit:'/ mois', desc:'Transactions illimitées.'}
+];
+
+const categories = [
+  {name:'Transactionnels', items:[
+    {label:'Dépôt direct (prestations gouv., prêt étudiant ou compte entreprise)', pts:30},
+    {label:'Relation transactionnelle active (3 trans./mois)', pts:10},
+    {label:'Prélèvement automatique', pts:10}
+  ]},
+  {name:'Gestion financière', items:[
+    {label:'Épargne systématique', pts:15},
+    {label:'Paiements à temps (carte de crédit ou prêts)', pts:10},
+    {label:'Aucun découvert (12 mois)', pts:10},
+    {label:'Outil budgétaire (lecture annuelle) / plan financier', pts:15}
+  ]},
+  {name:'Épargne et placement', tiered:true, items:[
+    {label:'Moins de 9 999 $', pts:5},
+    {label:'10 k$ à 49 999 $', pts:10},
+    {label:'50 k$ à 99 999 $', pts:15},
+    {label:'100 k$ à 249 999 $', pts:20},
+    {label:'250 k$ à 499 999 $', pts:40},
+    {label:'500 k$ et plus', pts:50}
+  ]},
+  {name:'Autonomie financière', tieredCoussin:true, items:[
+    {label:"Coussin d'urgence à 25 % de la cible", pts:5},
+    {label:"Coussin d'urgence à 50 %", pts:10},
+    {label:"Coussin d'urgence à 75 %", pts:15},
+    {label:"Coussin d'urgence à 100 %", pts:20},
+    {label:'Maintien du coussin à 100 % (6 mois)', pts:20},
+    {label:'Formation sur éducation financière en ligne', pts:10}
+  ]},
+  {name:'Financement et assurances', items:[
+    {label:'Détenir une assurance de dommages', pts:10},
+    {label:'Détenir une assurance de personnes', pts:10},
+    {label:'Détenir une hypothèque / marge Atout', pts:20},
+    {label:'Marge personnelle', pts:10}
+  ]},
+  {name:'Engagement coopératif', items:[
+    {label:"Parrainage d'un nouveau membre actif (Engagé) après 6 mois", pts:15},
+    {label:'Participation à la vie coopérative (vote, assemblée ou comité)', pts:15},
+    {label:'Relevés virtuels', pts:20}
+  ]}
+];
+
+function resetState(){
+  accounts = [
+    {id:'cheque', name:'Compte chèques', sub:'x4471', balance:5000.00, category:'quotidien'},
+    {id:'epargne', name:'Épargne', sub:'x8890', balance:10000.00, category:'epargne'},
+    {id:'urgence', name:"Coussin d'urgence", sub:'x2210', balance:0.00, category:'epargne'},
+    {id:'placements', name:'Placements', sub:'CELI, REER, Fonds...', balance:0.00, category:'epargne', excludeFromTransfer:true},
+    {id:'carteCredit', name:'Carte de crédit', sub:'Visa x1234', balance:-450.00, category:'financement', excludeFromTotal:true, excludeFromTransfer:true},
+    {id:'hypotheque', name:'Hypothèque', sub:'Taux 3,00 % · capital à rembourser', balance:-300000.00, category:'financement', excludeFromTotal:true, excludeFromTransfer:true},
+    {id:'margePersonnelle', name:'Marge personnelle', sub:'Taux 8,50 % · disponible : 5 000,00 $', balance:0.00, category:'financement', excludeFromTotal:true, excludeFromTransfer:true},
+    {id:'assuranceHabitation', name:'Assurance habitation', sub:'Prime annuelle', balance:-480.00, category:'assurance', excludeFromTotal:true, excludeFromTransfer:true},
+    {id:'assuranceAuto', name:'Assurance auto', sub:'Prime annuelle', balance:-620.00, category:'assurance', excludeFromTotal:true, excludeFromTransfer:true},
+    {id:'assurancePersonne', name:'Assurance de personne', sub:'Prime annuelle', balance:-360.00, category:'assurance', excludeFromTotal:true, excludeFromTransfer:true}
+  ];
+  transactions = [];
+  flags = {
+    salaire:false, relationActive:false, prelevementAuto:false,
+    epargneSystematique:false,
+    decouvert:false, paiementsATemps:false,
+    formation:false, outilBudgetaire:false,
+    coussin25:false, coussin50:false, coussin75:false, coussin100:false, maintienCoussin:false,
+    parrainage:false, viecoop:false, relevesVirtuels:false,
+    assurance:false, assurancePersonne:false, hypothequeAtout:false, margePersonnelle:false,
+    epargnePlacementBracket:null
+  };
+  prevPts = null;
+  prevDetectOk = null;
+}
+
+function fmt(n){ return n.toLocaleString('fr-CA',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' $'; }
+
+let stopRequested = false;
+let activeCancel = null;
+let simRunId = 0;
+
+function isStale(myRun){ return stopRequested || simRunId !== myRun; }
+
+function pause(ms){
+  return new Promise(resolve => {
+    if(stopRequested){ resolve(); return; }
+    const id = setTimeout(() => { activeCancel = null; resolve(); }, ms);
+    activeCancel = () => { clearTimeout(id); activeCancel = null; resolve(); };
+  });
+}
+
+function requestStop(){
+  if(stopRequested) return;
+  stopRequested = true;
+  if(activeCancel){ activeCancel(); }
+  if(window.__aiClose){ window.__aiClose(); }
+  if(window.__coussinClose){ window.__coussinClose(); }
+}
+
+function goTo(view){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === view));
+}
+
+function renderTotal(){
+  const total = accounts.filter(a => !a.excludeFromTotal).reduce((s,a) => s + a.balance, 0);
+  document.getElementById('totalAmount').textContent = fmt(total);
+}
+
+const ACCOUNT_CATEGORIES = [
+  {key:'quotidien', label:'Comptes courants', icon:'🏦'},
+  {key:'epargne', label:'Épargne et placement', icon:'💰'},
+  {key:'financement', label:'Financement', icon:'🏠'},
+  {key:'assurance', label:'Assurances', icon:'🛡️'}
+];
+
+function computeMortgagePayment(rate, principal){
+  const r = rate / 12;
+  const n = 300; // amortissement de 25 ans
+  const factor = Math.pow(1 + r, -n);
+  return principal * r / (1 - factor);
+}
+
+function getDisplayValue(a, tier){
+  if(a.id === 'hypotheque'){
+    const bonified = tier.level >= 4;
+    const rate = bonified ? 0.0275 : 0.03;
+    const principal = Math.abs(a.balance);
+    return -computeMortgagePayment(rate, principal);
+  }
+  if(a.id === 'assuranceHabitation' || a.id === 'assuranceAuto'){
+    const discount = (flags.assurance && tier.level === 4) ? 0.15 : ((flags.assurance && tier.level === 3) ? 0.05 : 0);
+    const premium = discount > 0 ? Math.abs(a.balance) * (1 - discount) : Math.abs(a.balance);
+    return -(premium / 12);
+  }
+  if(a.id === 'assurancePersonne'){
+    return -(Math.abs(a.balance) / 12);
+  }
+  return a.balance;
+}
+
+function renderAccounts(){
+  const list = document.getElementById('accountsList');
+  list.innerHTML = '';
+  const {tier} = computeStatus();
+
+  ACCOUNT_CATEGORIES.forEach(cat => {
+    const accs = accounts.filter(a => a.category === cat.key);
+    if(accs.length === 0) return;
+
+    const isMonthly = cat.key === 'financement' || cat.key === 'assurance';
+    const catTotal = accs.reduce((s,a) => s + getDisplayValue(a, tier), 0);
+
+    const group = document.createElement('div');
+    group.className = 'acct-group';
+    group.innerHTML =
+      '<div class="acct-group-header">'+
+        '<div class="acct-group-title"><span>'+cat.icon+'</span>'+cat.label+'</div>'+
+        '<div class="acct-group-total">'+fmt(catTotal)+(isMonthly ? '<span class="account-balance-unit">/mois</span>' : '')+'</div>'+
+      '</div>';
+
+    accs.forEach(a => {
+      const row = document.createElement('div');
+      row.className = 'acct-row';
+
+      if(a.id === 'hypotheque'){
+        const baseRate = 0.03;
+        const bonified = tier.level >= 4;
+        const rate = bonified ? 0.0275 : baseRate;
+        const principal = Math.abs(a.balance);
+        const monthly = computeMortgagePayment(rate, principal);
+        row.innerHTML =
+          '<div><div class="acct-row-name">'+a.name+'</div>'+
+          '<div class="acct-row-sub">Taux '+(rate*100).toFixed(2).replace('.',',')+' %'+(bonified ? ' <span class="bonif-tag">bonifié -0,25 % ✦ Partenaire</span>' : '')+'</div>'+
+          '<div class="acct-row-sub">Capital à rembourser : +'+fmt(principal)+'</div></div>'+
+          '<div class="acct-row-balance">'+fmt(-monthly)+'<span class="account-balance-unit">/mois</span></div>';
+        group.appendChild(row);
+        return;
+      }
+
+      if(a.id === 'assuranceHabitation' || a.id === 'assuranceAuto' || a.id === 'assurancePersonne'){
+        const basePremium = Math.abs(a.balance);
+        let discount = 0;
+        if(a.id !== 'assurancePersonne' && flags.assurance){
+          discount = tier.level === 4 ? 0.15 : (tier.level === 3 ? 0.05 : 0);
+        }
+        const bonified = discount > 0;
+        const premium = bonified ? basePremium * (1 - discount) : basePremium;
+        const monthly = premium / 12;
+        row.innerHTML =
+          '<div><div class="acct-row-name">'+a.name+'</div>'+
+          '<div class="acct-row-sub">Prime annuelle : '+fmt(-premium)+(bonified ? ' <span class="bonif-tag">rabais -'+Math.round(discount*100)+' % ✦ '+tier.name+'</span>' : '')+'</div></div>'+
+          '<div class="acct-row-balance">'+fmt(-monthly)+'<span class="account-balance-unit">/mois</span></div>';
+        group.appendChild(row);
+        return;
+      }
+
+      const isUrgence = a.id === 'urgence';
+      if(isUrgence){ row.style.cursor = 'pointer'; row.onclick = () => showCoussinModal(); }
+      const balStyle = a.balance < 0 ? ' style="color:var(--text)"' : '';
+      row.innerHTML = '<div><div class="acct-row-name">'+a.name+'</div><div class="acct-row-sub">'+a.sub+'</div></div><div style="display:flex;align-items:center;gap:8px"><div class="acct-row-balance"'+balStyle+'>'+fmt(a.balance)+'</div>'+(isUrgence ? '<div style="color:var(--text-muted);font-size:13px">→</div>' : '')+'</div>';
+      group.appendChild(row);
+    });
+
+    list.appendChild(group);
+  });
+}
+
+function renderTx(){
+  const list = document.getElementById('txList');
+  list.innerHTML = '';
+  if(transactions.length === 0){
+    list.innerHTML = '<div class="tx-empty">Aucune transaction pour le moment</div>';
+    return;
+  }
+  transactions.slice(0,6).forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'tx-row';
+    const sign = t.amount >= 0 ? '+' : '';
+    row.innerHTML = '<div class="tx-left"><div class="tx-icon">'+(t.amount>=0?'↓':'↑')+'</div><div><div class="tx-desc">'+t.desc+'</div><div class="tx-date">'+t.date+'</div></div></div><div class="tx-amount '+(t.amount>=0?'pos':'neg')+'">'+sign+fmt(Math.abs(t.amount)).replace('+','')+'</div>';
+    list.appendChild(row);
+  });
+}
+
+function addTx(desc, amount, type){
+  transactions.unshift({desc, amount, date:"aujourd'hui", account:'cheque', type});
+}
+function bumpBalance(accId, delta){
+  accounts.find(a => a.id === accId).balance += delta;
+}
+
+function getDetections(){
+  const rows = [
+    {id:'salaire', cat:'Transactionnels', label:'Dépôt direct (prestations gouv., prêt étudiant ou compte entreprise)', pts:30, required:true},
+    {id:'relationActive', cat:'Transactionnels', label:'Relation transactionnelle active (3 trans./mois)', pts:10},
+    {id:'prelevementAuto', cat:'Transactionnels', label:'Prélèvement automatique', pts:10},
+    {id:'epargneSystematique', cat:'Gestion financière', label:'Épargne systématique', pts:15},
+    {id:'paiementsATemps', cat:'Gestion financière', label:'Paiements à temps (carte de crédit ou prêts)', pts:10},
+    {id:'decouvert', cat:'Gestion financière', label:'Aucun découvert (12 mois)', pts:10},
+    {id:'outilBudgetaire', cat:'Gestion financière', label:'Outil budgétaire (lecture annuelle) / plan financier', pts:15}
+  ];
+  const result = rows.map(r => ({...r, ok: !!flags[r.id]}));
+
+  const coussinLevels = [
+    {id:'coussin25', flag:'coussin25', pts:5, label:"Coussin d'urgence à 25 %"},
+    {id:'coussin50', flag:'coussin50', pts:10, label:"Coussin d'urgence à 50 %"},
+    {id:'coussin75', flag:'coussin75', pts:15, label:"Coussin d'urgence à 75 %"},
+    {id:'coussin100', flag:'coussin100', pts:20, label:"Coussin d'urgence à 100 %"}
+  ];
+  let coussinReachedIdx = -1;
+  coussinLevels.forEach((lvl, i) => { if(flags[lvl.flag]) coussinReachedIdx = i; });
+  coussinLevels.slice().reverse().forEach((lvl, revI) => {
+    const i = coussinLevels.length - 1 - revI;
+    result.push({id: lvl.id, cat:'Autonomie financière', label: lvl.label, pts: lvl.pts, ok: i === coussinReachedIdx, surpassed: i < coussinReachedIdx});
+  });
+  result.push({id:'maintienCoussin', cat:'Autonomie financière', label:'Maintien du coussin à 100 % (6 mois)', pts:20, ok: !!flags.maintienCoussin});
+  result.push({id:'formation', cat:'Autonomie financière', label:'Formation sur éducation financière en ligne', pts:10, ok: !!flags.formation});
+
+  result.push(
+    {id:'assurance', cat:'Financement et assurances', label:'Détenir une assurance de dommages', pts:10, ok: !!flags.assurance},
+    {id:'assurancePersonne', cat:'Financement et assurances', label:'Détenir une assurance de personnes', pts:10, ok: !!flags.assurancePersonne},
+    {id:'hypothequeAtout', cat:'Financement et assurances', label:'Détenir une hypothèque / marge Atout', pts:20, ok: !!flags.hypothequeAtout},
+    {id:'margePersonnelle', cat:'Financement et assurances', label:'Marge personnelle', pts:10, ok: !!flags.margePersonnelle},
+    {id:'parrainage', cat:'Engagement coopératif', label:"Parrainage d'un nouveau membre actif (Engagé) après 6 mois", pts:15, ok: !!flags.parrainage},
+    {id:'viecoop', cat:'Engagement coopératif', label:'Participation à la vie coopérative (vote, assemblée ou comité)', pts:15, ok: !!flags.viecoop},
+    {id:'relevesVirtuels', cat:'Engagement coopératif', label:'Relevés virtuels', pts:20, ok: !!flags.relevesVirtuels}
+  );
+
+  const bracket = flags.epargnePlacementBracket;
+  const bracketOrder = ['10k-','10k-49999','50k-99999','100k-249999','250k-499999','500k+'];
+  const bracketReachedIdx = bracket ? bracketOrder.indexOf(bracket) : -1;
+  bracketOrder.forEach((key, i) => {
+    const info = epargnePlacementTable[key];
+    result.push({
+      id:'epargne_' + key, cat:'Épargne et placement',
+      label: info.label,
+      pts: info.pts,
+      ok: bracket === key,
+      surpassed: i < bracketReachedIdx
+    });
+  });
+
+  return result;
+}
+
+function computeStatus(){
+  const detections = getDetections();
+  const pts = detections.reduce((s,d) => s + (d.ok ? d.pts : 0), 0);
+  const salaireOk = !!flags.salaire;
+  let tier = tiers[0];
+  if(salaireOk){
+    tier = tiers.find(t => pts >= t.min && pts <= t.max) || tiers[tiers.length-1];
+  }
+  return {detections, pts, tier, salaireOk};
+}
+
+function animateCount(el, from, to, duration){
+  if(from === to){ el.textContent = to + ' pt' + (to===1?'':'s'); return; }
+  const start = performance.now();
+  function step(now){
+    const t = Math.min(1, (now-start)/duration);
+    const eased = 1 - Math.pow(1-t, 3);
+    const val = Math.round(from + (to-from)*eased);
+    el.textContent = val + ' pt' + (val===1?'':'s');
+    if(t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function categoryTotalLabel(catName){
+  const cat = categories.find(c => c.name === catName);
+  if(!cat) return '';
+  const total = cat.tiered ? Math.max(...cat.items.map(i => i.pts)) : cat.items.reduce((s,i) => s + i.pts, 0);
+  return cat.tiered ? (' — un palier, jusqu\u2019à ' + total + ' pts') : (' — jusqu\u2019à ' + total + ' pts');
+}
+
+function renderDetectList(detections, justUnlocked){
+  justUnlocked = justUnlocked || [];
+  const list = document.getElementById('detectList');
+  list.innerHTML = '';
+  let lastCat = null;
+  let groupEl = null;
+  let groupIndex = -1;
+  detections.forEach(d => {
+    if(d.cat !== lastCat){
+      groupIndex++;
+      groupEl = document.createElement('div');
+      groupEl.className = 'cat-group';
+      groupEl.id = 'catGroup-' + groupIndex;
+      const h = document.createElement('div');
+      h.className = 'cat-title';
+      h.textContent = d.cat + categoryTotalLabel(d.cat);
+      groupEl.appendChild(h);
+      list.appendChild(groupEl);
+      lastCat = d.cat;
+    }
+    const row = document.createElement('div');
+    row.className = 'detect-row' + (d.ok ? ' done' : '') + (justUnlocked.includes(d.id) ? ' flash' : '');
+    row.innerHTML =
+      '<div class="detect-icon '+(d.ok?'yes':'no')+'">'+(d.ok?'✓':'—')+'</div>'+
+      '<div class="detect-text"><div class="detect-label">'+d.label+(d.required?' <span class="req-tag">(clé)</span>':'')+'</div></div>'+
+      '<div class="detect-pts">'+(d.ok ? '+'+d.pts : '+'+d.pts)+'</div>';
+    groupEl.appendChild(row);
+  });
+}
+
+
+
+
+
+function renderForfaits(){
+  const list = document.getElementById('forfaitsList');
+  if(!list) return;
+  list.innerHTML = forfaits.map(f =>
+    '<div class="niveau-card">'+
+      '<div class="niveau-top"><span class="niveau-name">'+f.name+'</span><span class="niveau-badge">'+f.price+' '+f.unit+'</span></div>'+
+      '<div class="niveau-perk">'+f.desc+'</div>'+
+    '</div>'
+  ).join('');
+}
+
+function renderNiveaux(currentLevel){
+  const list = document.getElementById('niveauxList');
+  list.innerHTML = '';
+  tiers.forEach(t => {
+    const isCurrent = t.level === currentLevel;
+    const card = document.createElement('div');
+    card.id = 'niveauCard-' + t.level;
+    card.className = 'niveau-card' + (isCurrent ? ' current' : '');
+    const perksHtml = t.perks.map(p => '<div class="niveau-perk">• '+p+'</div>').join('');
+    card.innerHTML =
+      '<div class="niveau-top"><div><span class="niveau-name">'+t.name+'</span>'+(isCurrent ? '<span class="niveau-you">Toi</span>' : '')+'<div class="niveau-range">'+t.min+' à '+t.max+' pts</div></div><span class="niveau-badge'+(isCurrent?' current':'')+'">'+t.name+'</span></div>'+
+      perksHtml;
+    list.appendChild(card);
+  });
+}
+
+const BRACKET_FLOOR = {'10k-':5000, '10k-49999':10000, '50k-99999':50000, '100k-249999':100000, '250k-499999':250000, '500k+':500000};
+const QUAL_BY_LEVEL = {
+  0:[],
+  1:[],
+  2:[],
+  3:[],
+  4:[]
+};
+
+const EPARGNE_BONIF_RATE = {1:0.0075, 2:0.01, 3:0.015, 4:0.02};
+const CARTE_PRESTIGE_FRAIS = 120; // frais annuel estimé d'une carte prestige, à ajuster si un vrai compte est ajouté
+
+function computeAnnualValue(level){
+  const bracket = flags.epargnePlacementBracket;
+  const items = [];
+
+  if(level === 0){
+    items.push({label:'Forfait de base gratuit', formula:'4 $ × 12 mois', amount: 4*12});
+  } else {
+    items.push({label:'Forfait illimité gratuit', formula:'10 $ × 12 mois', amount: 10*12});
+  }
+
+  if(bracket && level >= 1){
+    const floor = BRACKET_FLOOR[bracket];
+    const rate = EPARGNE_BONIF_RATE[level];
+    const ratePct = (rate*100).toFixed(2).replace('.00','').replace('.', ',');
+    items.push({
+      label:'Bonification du compte d\u2019épargne +' + ratePct + ' %',
+      formula: fmt(floor) + ' d\u2019actifs × ' + ratePct + ' %',
+      amount: floor * rate
+    });
+  }
+
+  if(level === 2){
+    items.push({label:'Rabais sur carte de crédit prestige', formula:'Estimation annuelle', amount: 25});
+  }
+  if(level === 3){
+    items.push({label:'Rabais sur carte de crédit prestige (Équilibre)', formula:'Estimation annuelle', amount: 50});
+  }
+  if(level === 4){
+    items.push({label:'Carte de crédit prestige gratuite', formula:'Frais annuel estimé', amount: CARTE_PRESTIGE_FRAIS});
+    items.push({label:'Rabais sur la marge de crédit (-0,25 %)', formula:'Estimation annuelle', amount: 40});
+  }
+
+  if(level >= 3 && flags.assurance){
+    const habitation = Math.abs(accounts.find(a => a.id === 'assuranceHabitation').balance);
+    const auto = Math.abs(accounts.find(a => a.id === 'assuranceAuto').balance);
+    const totalPrimes = habitation + auto;
+    const rate = level === 4 ? 0.15 : 0.05;
+    items.push({
+      label:'Rabais de ' + (level===4?'17':'5') + ' % sur les assurances de dommage',
+      formula: fmt(totalPrimes) + ' de primes annuelles (habitation + auto) × ' + (level===4?'17':'5') + ' %',
+      amount: totalPrimes * rate
+    });
+  }
+
+  const total = items.reduce((s,i) => s + i.amount, 0);
+  return {items, total};
+}
+
+function renderBilan(level, tierName){
+  const {items, total} = computeAnnualValue(level);
+
+  document.getElementById('bilanTotal').textContent = fmt(total);
+  document.getElementById('bilanTierNote').textContent = 'Statut ' + tierName;
+
+  const itemsEl = document.getElementById('bilanItems');
+  itemsEl.innerHTML = items.map((i,idx) =>
+    '<div class="bilan-item" id="bilanItem-'+idx+'"><div class="bilan-item-top"><span class="bilan-item-label">'+i.label+'</span><span class="bilan-item-amount">+'+fmt(i.amount)+'</span></div><div class="bilan-item-formula">'+i.formula+'</div></div>'
+  ).join('');
+
+  let qual = [];
+  for(let l = 0; l <= level; l++){ qual = qual.concat(QUAL_BY_LEVEL[l] || []); }
+  const qualEl = document.getElementById('bilanQualitatifs');
+  qualEl.innerHTML = qual.map(q => '<div class="bilan-qual-item">• '+q+'</div>').join('');
+}
+
+function renderRecommandations(detections, pts, tier){
+  const salaireOk = !!flags.salaire;
+  const nextTier = tiers.find(t => t.min > (salaireOk ? pts : -1));
+  if(!salaireOk){
+    document.getElementById('recoSummary').textContent = 'Le dépôt de salaire est obligatoire pour débloquer les niveaux — tu as ' + pts + ' pts en attente, mais tu restes à ' + tier.name + ' tant qu\u2019il n\u2019est pas détecté.';
+  } else {
+    document.getElementById('recoSummary').textContent = nextTier
+      ? 'Tu es au niveau ' + tier.name + ' avec ' + pts + ' pts. Il te manque ' + (nextTier.min - pts) + ' pts pour ' + nextTier.name + '.'
+      : 'Tu es au niveau maximal (' + tier.name + ') avec ' + pts + ' pts.';
+  }
+
+  const todo = detections.filter(d => !d.ok && !d.surpassed);
+  const facile = todo.filter(d => EFFORT_FACILE.has(d.id)).sort((a,b) => a.pts - b.pts);
+  const soutenu = todo.filter(d => !EFFORT_FACILE.has(d.id)).sort((a,b) => a.pts - b.pts);
+
+  const facileEl = document.getElementById('recoFacile');
+  facileEl.innerHTML = facile.length === 0
+    ? '<div class="section-hint" style="margin:0">Rien de plus à faire de ce côté pour le moment.</div>'
+    : facile.map(d => '<div class="action-row"><div><div class="action-label">'+d.label+'</div><div class="action-sub">'+d.cat+'</div></div><span class="detect-pts">+'+d.pts+'</span></div>').join('');
+
+  const soutenuEl = document.getElementById('recoSoutenu');
+  soutenuEl.innerHTML = soutenu.length === 0
+    ? '<div class="section-hint" style="margin:0">Rien de plus à faire de ce côté pour le moment.</div>'
+    : soutenu.map(d => '<div class="action-row"><div><div class="action-label">'+d.label+'</div><div class="action-sub">'+d.cat+'</div></div><span class="detect-pts">+'+d.pts+'</span></div>').join('');
+}
+
+function renderStatut(){
+  const {detections, pts, tier, salaireOk} = computeStatus();
+
+  const placementsAcc = accounts.find(a => a.id === 'placements');
+  if(placementsAcc){
+    const newBalance = flags.epargnePlacementBracket ? BRACKET_FLOOR[flags.epargnePlacementBracket] : 0;
+    if(placementsAcc.balance !== newBalance){
+      placementsAcc.balance = newBalance;
+      renderTotal();
+      renderAccounts();
+    }
+  }
+
+  const justUnlocked = [];
+  if(prevDetectOk){
+    detections.forEach(d => { if(d.ok && !prevDetectOk[d.id]) justUnlocked.push(d.id); });
+  }
+
+  animateCount(document.getElementById('ptsAmount'), prevPts === null ? pts : prevPts, pts, 900);
+  document.getElementById('tierName').textContent = tier.name;
+  document.getElementById('tierBadge').textContent = tier.min + '-' + tier.max + ' pts';
+  document.getElementById('barFill').style.width = Math.min(100, (pts/300)*100) + '%';
+  document.getElementById('lockNote').style.display = salaireOk ? 'none' : 'block';
+
+  const advEl = document.getElementById('statutAdvantages');
+  if(advEl){
+    advEl.innerHTML = salaireOk
+      ? tier.perks.map(p => '<div class="adv-row"><span class="adv-check">✓</span><span>'+p+'</span></div>').join('')
+      : '<div class="adv-row"><span class="adv-check">—</span><span>Aucun avantage tant que le dépôt de salaire (30 pts) n\u2019est pas détecté.</span></div>';
+  }
+
+  const nextTier = tiers.find(t => t.min > (salaireOk ? pts : -1));
+  const nextLabelEl = document.getElementById('nextLabel');
+  if(!salaireOk){
+    nextLabelEl.textContent = 'Dépôt de salaire requis';
+  } else if(nextTier){
+    nextLabelEl.textContent = (nextTier.min - pts) + ' pts pour ' + nextTier.name;
+  } else {
+    nextLabelEl.textContent = 'Niveau maximal atteint';
+  }
+
+  renderDetectList(detections, justUnlocked);
+  renderNiveaux(tier.level);
+  renderRecommandations(detections, pts, tier);
+  renderBilan(tier.level, tier.name);
+  renderActions();
+
+  prevPts = pts;
+  prevDetectOk = {};
+  detections.forEach(d => prevDetectOk[d.id] = d.ok);
+}
+
+function doTransfer(fromId, toId, amount){
+  const fromAcc = accounts.find(a => a.id === fromId);
+  const toAcc = accounts.find(a => a.id === toId);
+  fromAcc.balance -= amount;
+  toAcc.balance += amount;
+  const outType = (toId === 'epargne') ? 'epargne_auto' : 'normal';
+  transactions.unshift({desc:'Virement vers '+toAcc.name, amount:-amount, date:"aujourd'hui", account:fromId, type:outType});
+  transactions.unshift({desc:'Virement de '+fromAcc.name, amount:amount, date:"aujourd'hui", account:toId, type:'normal'});
+}
+
+function renderActions(){
+  const list = document.getElementById('actionsList');
+  list.innerHTML = '';
+  const items = [
+    {label:'Dépôt de salaire', sub:'Simuler un dépôt direct récurrent.', done: flags.salaire, fn:'manualSalaire'},
+    {label:'Relation transactionnelle active', sub:'Confirmer 3 transactions par mois.', done: flags.relationActive, fn:'manualRelationActive'},
+    {label:'Prélèvement automatique', sub:'Activer un paiement récurrent.', done: flags.prelevementAuto, fn:'manualPrelevement'},
+    {label:'Épargne systématique', sub:'Activer un virement automatique vers l\u2019épargne.', done: flags.epargneSystematique, fn:'manualEpargneAuto'},
+    {label:'Aucun découvert', sub:'Confirmer 12 mois sans découvert.', done: flags.decouvert, fn:'manualDecouvert'},
+    {label:'Paiements à temps', sub:'Crédit et prêts sans retard.', done: flags.paiementsATemps, fn:'manualPaiements'},
+    {label:'Outil budgétaire / plan financier', sub:'Compléter la lecture annuelle du budget.', done: flags.outilBudgetaire, fn:'manualOutil'},
+    {label:"Coussin d'urgence", sub:'Atteindre et maintenir la cible.', done: flags.maintienCoussin, fn:'manualCoussin'},
+    {label:'Formation en ligne', sub:'Compléter un module d\u2019éducation financière.', done: flags.formation, fn:'manualFormation'},
+    {label:"Parler avec l'IA", sub:'Poser une question à l\u2019assistant financier.', done: false, fn:'openAIChat'},
+    {label:'Parrainage', sub:"Parrainer un nouveau membre.", done: flags.parrainage, fn:'manualParrainage'},
+    {label:'Vie coopérative', sub:"Voter à l'assemblée générale.", done: flags.viecoop, fn:'manualCoop'},
+    {label:'Relevés virtuels', sub:'Activer les relevés électroniques.', done: flags.relevesVirtuels, fn:'manualReleves'},
+    {label:'Produits d\u2019épargne ou placement', sub:'Détenir des actifs confiés (CELI, REER, Fonds...).', done: !!flags.epargnePlacementBracket, fn:'manualEpargnePlacement'},
+    {label:'Assurance de dommages', sub:'Souscrire une police d\u2019assurance habitation/auto.', done: flags.assurance, fn:'manualAssurance'},
+    {label:'Assurance de personnes', sub:'Souscrire une assurance vie ou invalidité.', done: flags.assurancePersonne, fn:'manualAssurancePersonne'},
+    {label:'Hypothèque / marge Atout', sub:'Détenir un produit de financement.', done: flags.hypothequeAtout, fn:'manualHypothequeAtout'},
+    {label:'Marge personnelle', sub:'Détenir une marge de crédit personnelle.', done: flags.margePersonnelle, fn:'manualMargePersonnelle'}
+  ];
+  items.forEach(it => {
+    const row = document.createElement('div');
+    row.className = 'action-row';
+    row.innerHTML = '<div><div class="action-label">'+it.label+'</div><div class="action-sub">'+it.sub+'</div></div>' +
+      (it.done ? '<span class="done-tag">Fait ✓</span>' : '<button class="btn-small" onclick="'+it.fn+'()">Faire</button>');
+    list.appendChild(row);
+  });
+}
+function manualSalaire(){
+  if(!flags.salaire){ addTx('Dépôt de paie', 1840.00, 'salaire'); bumpBalance('cheque', 1840.00); }
+  flags.salaire = true;
+  renderTotal(); renderAccounts(); renderTx();
+  renderStatut();
+}
+async function manualRelationActive(){
+  flags.relationActive = true; renderStatut();
+  await showChecklistModal('Transactionnels', 'Relation active', ['Minimum 3 transactions par mois ✓']);
+}
+async function manualPrelevement(){
+  flags.prelevementAuto = true; renderStatut();
+  await showChecklistModal('Transactionnels', 'Prélèvement automatique', ['Paiement récurrent activé ✓']);
+}
+function manualEpargneAuto(){
+  if(!flags.epargneSystematique){ doTransfer('cheque','epargne',200.00); }
+  flags.epargneSystematique = true;
+  renderTotal(); renderAccounts(); renderTx();
+  renderStatut();
+}
+async function manualDecouvert(){
+  flags.decouvert = true; renderStatut();
+  await showChecklistModal('Gestion financière', 'Aucun découvert', ['Aucun découvert confirmé sur 12 mois ✓']);
+}
+function manualCoussin(){
+  if(!flags.coussin100){ bumpBalance('urgence', COUSSIN_CIBLE); renderTotal(); renderAccounts(); }
+  flags.coussin25 = true; flags.coussin50 = true; flags.coussin75 = true; flags.coussin100 = true; flags.maintienCoussin = true;
+  renderStatut();
+}
+function manualEpargnePlacement(){ flags.epargnePlacementBracket = '10k-49999'; renderStatut(); }
+async function manualFormation(){
+  flags.formation = true; renderStatut();
+  await showChecklistModal('Autonomie financière', 'Formation en ligne', ["Module d'éducation financière complété ✓"]);
+}
+async function manualOutil(){
+  flags.outilBudgetaire = true; renderStatut();
+  await showChecklistModal('Gestion financière', 'Outil budgétaire', ['Lecture annuelle et plan financier complétés ✓']);
+}
+async function manualPaiements(){
+  flags.paiementsATemps = true; renderStatut();
+  await showChecklistModal('Gestion financière', 'Paiements à temps', ['Carte de crédit et prêts sans retard ✓']);
+}
+async function manualReleves(){
+  flags.relevesVirtuels = true; renderStatut();
+  await showChecklistModal('Engagement coopératif', 'Relevés virtuels', ['Relevés électroniques activés ✓']);
+}
+async function manualHypothequeAtout(){
+  flags.hypothequeAtout = true; renderStatut(); renderAccounts();
+  await showChecklistModal('Financement et assurances', 'Hypothèque / marge Atout', ['Produit de financement détenu ✓']);
+}
+async function manualMargePersonnelle(){
+  flags.margePersonnelle = true; renderStatut(); renderAccounts();
+  await showChecklistModal('Financement et assurances', 'Marge personnelle', ['Marge de crédit personnelle activée ✓']);
+}
+function updateCoussinMilestones(){
+  const bal = accounts.find(a => a.id === 'urgence').balance;
+  flags.coussin25 = bal >= COUSSIN_CIBLE * 0.25;
+  flags.coussin50 = bal >= COUSSIN_CIBLE * 0.50;
+  flags.coussin75 = bal >= COUSSIN_CIBLE * 0.75;
+  flags.coussin100 = bal >= COUSSIN_CIBLE;
+}
+
+function accountFromText(str){
+  if(/coussin|urgence/.test(str)) return {id:'urgence', name:"ton coussin d'urgence"};
+  if(/placement/.test(str)) return {id:'placements', name:'tes placements'};
+  if(/(é|e)pargne/.test(str)) return {id:'epargne', name:'ton épargne'};
+  if(/ch(è|e)que/.test(str)) return {id:'cheque', name:'ton compte chèques'};
+  return null;
+}
+
+function handleAIRequest(text){
+  const norm = text.toLowerCase();
+  const amountMatch = norm.match(/(\d+(?:[.,]\d+)?)\s*\$?/);
+  const amount = amountMatch ? parseFloat(amountMatch[1].replace(',', '.')) : null;
+  const isTransferRequest = /vire|virement|transf(é|e)r|envoie|d(é|e)pose/.test(norm);
+
+  if(isTransferRequest && amount){
+    const versSplit = norm.split(/\bvers\b/);
+    const fromPart = versSplit[0];
+    const toPart = versSplit.length >= 2 ? versSplit[1] : '';
+    const destAcc = toPart ? accountFromText(toPart) : accountFromText(norm);
+    let srcAcc = accountFromText(fromPart);
+    if(destAcc && srcAcc && srcAcc.id === destAcc.id) srcAcc = null;
+    if(!srcAcc) srcAcc = {id:'cheque', name:'ton compte chèques'};
+
+    if(!destAcc){
+      return "Vers quel compte veux-tu ce virement ? (épargne, coussin d'urgence, placements)";
+    }
+    const fromAccObj = accounts.find(a => a.id === srcAcc.id);
+    if(amount > fromAccObj.balance){
+      return "Solde insuffisant dans " + srcAcc.name + " (" + fmt(fromAccObj.balance) + ").";
+    }
+    doTransfer(srcAcc.id, destAcc.id, amount);
+    renderTotal(); renderAccounts(); renderTx();
+
+    let extra = '';
+    if(destAcc.id === 'urgence'){
+      updateCoussinMilestones();
+      const bal = accounts.find(a => a.id === 'urgence').balance;
+      extra = ' Ton coussin est maintenant à ' + fmt(bal) + ' sur ' + fmt(COUSSIN_CIBLE) + ' visé.';
+    }
+    if(destAcc.id === 'epargne'){
+      flags.epargneSystematique = true;
+      extra = ' J\u2019ai aussi activé l\u2019épargne automatique récurrente.';
+    }
+    renderStatut();
+    return "C'est fait — " + fmt(amount) + " transférés de " + srcAcc.name + " vers " + destAcc.name + "." + extra;
+  }
+
+  const actionMap = [
+    {re:/formation|(é|e)ducation/, fn:()=>{flags.formation=true;}, msg:'Formation en ligne marquée complétée ✓'},
+    {re:/outil budg(é|e)taire|budget compl|plan financier/, fn:()=>{flags.outilBudgetaire=true;}, msg:'Outil budgétaire / plan financier complété ✓'},
+    {re:/pr(é|e)l(è|e)vement/, fn:()=>{flags.prelevementAuto=true;}, msg:'Prélèvement automatique activé ✓'},
+    {re:/relation|transaction active/, fn:()=>{flags.relationActive=true;}, msg:'Relation transactionnelle active confirmée ✓'},
+    {re:/paiement.*temps|carte.*cr(é|e)dit.*temps/, fn:()=>{flags.paiementsATemps=true;}, msg:'Paiements à temps confirmés ✓'},
+    {re:/d(é|e)couvert/, fn:()=>{flags.decouvert=true;}, msg:'Aucun découvert confirmé sur 12 mois ✓'},
+    {re:/relev(é|e)s? virtuel/, fn:()=>{flags.relevesVirtuels=true;}, msg:'Relevés virtuels activés ✓'},
+    {re:/parrain/, fn:()=>{flags.parrainage=true;}, msg:'Parrainage enregistré ✓'},
+    {re:/assembl(é|e)e|coop(é|e)rative|vote/, fn:()=>{flags.viecoop=true;}, msg:"Participation à la vie coopérative enregistrée ✓"},
+    {re:/hypoth(è|e)que|marge atout/, fn:()=>{flags.hypothequeAtout=true;}, msg:'Hypothèque / marge Atout enregistrée ✓'},
+    {re:/marge personnelle/, fn:()=>{flags.margePersonnelle=true;}, msg:'Marge personnelle activée ✓'},
+    {re:/personne|vie|invalidit(é|e)/, fn:()=>{flags.assurancePersonne=true;}, msg:'Assurance de personnes (vie et invalidité) souscrite ✓'},
+    {re:/assurance/, fn:()=>{flags.assurance=true;}, msg:'Assurance de dommages souscrite ✓'}
+  ];
+  for(const a of actionMap){
+    if(a.re.test(norm)){
+      a.fn();
+      renderTotal(); renderAccounts(); renderStatut();
+      return a.msg;
+    }
+  }
+
+  if(/statut|niveau|points|pts/.test(norm)){
+    const {pts, tier, salaireOk} = computeStatus();
+    if(!salaireOk){
+      return 'Tu as ' + pts + ' pts en attente, mais le dépôt de salaire est obligatoire pour débloquer les niveaux — tu restes à ' + tier.name + ' tant qu\u2019il n\u2019est pas détecté.';
+    }
+    return 'Tu es au niveau ' + tier.name + ' avec ' + pts + ' points.';
+  }
+
+  if(/conseil|analyse|situation financi(è|e)re|comment (vont|va)|recommand/.test(norm)){
+    return generateAccountAdvice();
+  }
+
+  return "Je peux exécuter des virements automatisés (avec compte source et destination), compléter des comportements (formation, budget, assurance, parrainage, vote coopératif...), analyser tes comptes pour te conseiller, ou te donner ton statut.";
+}
+
+function generateAccountAdvice(){
+  const chequeBal = accounts.find(a => a.id === 'cheque').balance;
+  const creditBal = Math.abs(accounts.find(a => a.id === 'carteCredit').balance);
+  const urgenceBal = accounts.find(a => a.id === 'urgence').balance;
+  const {tier} = computeStatus();
+
+  const incomeEl = document.getElementById('budgetIncome');
+  const income = incomeEl ? (parseFloat(incomeEl.value) || 0) : 0;
+  const logement = income ? (parseFloat(document.getElementById('budgetLogement').value) || 0) : 0;
+  const alimentation = income ? (parseFloat(document.getElementById('budgetAlimentation').value) || 0) : 0;
+  const transport = income ? (parseFloat(document.getElementById('budgetTransport').value) || 0) : 0;
+  const loisirs = income ? (parseFloat(document.getElementById('budgetLoisirs').value) || 0) : 0;
+  const budgetEpargne = income ? (parseFloat(document.getElementById('budgetEpargne').value) || 0) : 0;
+  const totalDepenses = logement + alimentation + transport + loisirs + budgetEpargne;
+  const reste = income - totalDepenses;
+  const logementPct = income > 0 ? Math.round((logement / income) * 100) : 0;
+  const epargnePct = income > 0 ? Math.round((budgetEpargne / income) * 100) : 0;
+  const creditPctIncome = income > 0 ? Math.round((creditBal / income) * 100) : 0;
+
+  if(income === 0){
+    return "Remplis d'abord ton outil budgétaire dans l'onglet Budget — je pourrai ensuite te donner des conseils précis sur tes dépenses et ta carte de crédit.";
+  }
+
+  // Priorité 1 : problème le plus urgent
+  if(reste < 0){
+    return "Ton budget est déficitaire de " + fmt(Math.abs(reste)) + " ce mois-ci. Les loisirs (" + fmt(loisirs) + ") et l'alimentation (" + fmt(alimentation) + ") sont les postes les plus faciles à ajuster en premier.";
+  }
+  if(creditPctIncome > 20){
+    return "Ta carte de crédit doit " + fmt(creditBal) + ", soit " + creditPctIncome + " % de ton revenu mensuel. Avant d'augmenter l'épargne ou les dépenses, je te suggère de prioriser son remboursement — chaque dollar dessus coûte plus cher en intérêts qu'il n'en rapporte ailleurs.";
+  }
+  if(logementPct > 35){
+    return "Le logement prend " + logementPct + " % de ton revenu, au-dessus du 35 % généralement recommandé. Ça laisse moins de marge pour l'épargne (actuellement " + epargnePct + " %) — pas nécessairement à changer, mais bon à garder en tête.";
+  }
+  if(urgenceBal < COUSSIN_CIBLE){
+    return "Ton budget est équilibré (logement à " + logementPct + " %, épargne à " + epargnePct + " %, " + fmt(reste) + " de marge). Le prochain objectif logique : compléter ton coussin d'urgence, actuellement à " + fmt(urgenceBal) + " sur " + fmt(COUSSIN_CIBLE) + ".";
+  }
+  if(epargnePct < 10){
+    return "Ton budget tient bien la route, mais ton taux d'épargne (" + epargnePct + " %) reste sous le 10 % généralement visé. Avec " + fmt(reste) + " de marge ce mois-ci, tu pourrais en transférer une partie vers l'épargne.";
+  }
+  return "Ton budget est solide : logement à " + logementPct + " %, épargne à " + epargnePct + " %, carte de crédit sous contrôle, et coussin d'urgence complet. Statut actuel : " + tier.name + ".";
+}
+
+function buildGaugeSVG(pct){
+  const segments = 40;
+  const filled = Math.round(segments * Math.min(100,pct) / 100);
+  const cx = 100, cy = 100, rOuter = 92, rInner = 66;
+  let ticks = '';
+  for(let i = 0; i < segments; i++){
+    const t = i / (segments - 1);
+    const angle = Math.PI + (Math.PI * t);
+    const x1 = cx + rInner * Math.cos(angle);
+    const y1 = cy + rInner * Math.sin(angle);
+    const x2 = cx + rOuter * Math.cos(angle);
+    const y2 = cy + rOuter * Math.sin(angle);
+    const color = i < filled ? '#C89B3C' : 'rgba(255,255,255,0.18)';
+    ticks += '<line x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+color+'" stroke-width="5" stroke-linecap="round"/>';
+  }
+  return '<svg viewBox="0 0 200 108" style="width:100%;max-width:200px;display:block;margin:0 auto">'+ticks+'</svg>';
+}
+
+function showCoussinModal(){
+  return new Promise(resolve => {
+    const overlay = document.getElementById('simOverlay');
+    const modal = document.getElementById('simModal');
+    const bal = accounts.find(a => a.id === 'urgence').balance;
+    const pct = Math.round((bal / COUSSIN_CIBLE) * 100);
+    const pctClamped = Math.min(100, pct);
+    const remaining = Math.max(0, COUSSIN_CIBLE - bal);
+    modal.className = 'sim-modal tier-modal';
+    modal.innerHTML =
+      '<div class="sim-modal-title">Ton coussin d\u2019urgence</div>'+
+      '<div style="position:relative;margin-top:8px">'+
+        buildGaugeSVG(pctClamped)+
+        '<div style="position:absolute;left:0;right:0;top:58px;text-align:center;font-family:var(--serif);font-size:28px;color:#fff">'+pctClamped+' %</div>'+
+      '</div>'+
+      '<div style="display:flex;justify-content:space-between;margin-top:6px;padding:0 6px">'+
+        '<div><div style="font-size:11px;color:rgba(255,255,255,0.6)">Montant actuel</div><div style="font-family:var(--serif);font-size:18px;color:#F6EDD8">'+fmt(bal)+'</div></div>'+
+        '<div style="text-align:right"><div style="font-size:11px;color:rgba(255,255,255,0.6)">Cible</div><div style="font-family:var(--serif);font-size:18px;color:#fff">'+fmt(COUSSIN_CIBLE)+'</div></div>'+
+      '</div>'+
+      '<div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:14px;text-align:center;line-height:1.5">'+
+        (pctClamped >= 100
+          ? 'Objectif atteint — maintiens-le 6 mois pour le bonus complet.'
+          : 'Encore ' + fmt(remaining) + ' pour atteindre la cible.')+
+      '</div>'+
+      '<button style="margin-top:16px;width:100%;background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-family:var(--sans);font-weight:500" onclick="window.__coussinClose()">Fermer</button>';
+    overlay.classList.add('show');
+    window.__coussinClose = () => {
+      overlay.classList.remove('show');
+      window.__coussinClose = null;
+      setTimeout(resolve, 400);
+    };
+  });
+}
+
+function speakText(text){
+  if(!window.speechSynthesis) return;
+  try{
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'fr-CA';
+    utter.rate = 1.0;
+    window.speechSynthesis.speak(utter);
+  }catch(e){}
+}
+
+function showAIChatModal(){
+  return new Promise(resolve => {
+    const overlay = document.getElementById('simOverlay');
+    const modal = document.getElementById('simModal');
+    modal.className = 'sim-modal';
+    modal.innerHTML =
+      '<div class="sim-modal-cat">Assistant IA</div>'+
+      '<div class="sim-modal-title">Que puis-je faire pour toi ?</div>'+
+      '<textarea id="aiInput" rows="2" placeholder="Ex. Fait un virement de 200 $ de mon compte chèques vers mon coussin d\u2019urgence" style="width:100%;margin-top:12px;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;font-family:var(--sans);resize:none;color:var(--text)"></textarea>'+
+      '<div id="aiResponse" style="margin-top:10px;font-size:13px;color:var(--text-secondary);line-height:1.5;min-height:20px"></div>'+
+      '<div style="display:flex;gap:8px;margin-top:14px">'+
+        '<button id="aiMicBtn" style="width:46px;flex-shrink:0;background:rgba(19,76,66,0.08);color:var(--forest);border:none;border-radius:8px;font-size:16px" onclick="window.__aiMic()">\uD83C\uDFA4</button>'+
+        '<button style="flex:1;background:rgba(19,76,66,0.08);color:var(--forest);border:none;border-radius:8px;padding:10px;font-size:13px;font-family:var(--sans);font-weight:500" onclick="window.__aiClose()">Fermer</button>'+
+        '<button style="flex:1;background:var(--forest);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-family:var(--sans);font-weight:600" onclick="window.__aiSend()">Envoyer</button>'+
+      '</div>'+
+      '<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px">Appuie sur \uD83C\uDFA4 pour parler à voix haute</div>';
+    overlay.classList.add('show');
+    const inputEl = document.getElementById('aiInput');
+    inputEl.focus();
+
+    window.__aiSend = () => {
+      const text = inputEl.value.trim();
+      const responseEl = document.getElementById('aiResponse');
+      if(!text){ responseEl.textContent = "Écris ou dis ta demande d'abord."; return; }
+      const result = handleAIRequest(text);
+      responseEl.textContent = result;
+      speakText(result);
+      renderStatut();
+    };
+
+    window.__aiMic = () => {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const micBtn = document.getElementById('aiMicBtn');
+      const responseEl = document.getElementById('aiResponse');
+      if(!SR){
+        responseEl.textContent = "La reconnaissance vocale n'est pas disponible sur ce navigateur.";
+        return;
+      }
+      const recog = new SR();
+      recog.lang = 'fr-CA';
+      recog.interimResults = false;
+      recog.maxAlternatives = 1;
+      micBtn.textContent = '\u25CF';
+      micBtn.style.color = '#B3432E';
+      recog.onresult = (e) => {
+        const transcript = e.results[0][0].transcript;
+        inputEl.value = transcript;
+        window.__aiSend();
+      };
+      recog.onerror = () => { micBtn.textContent = '\uD83C\uDFA4'; micBtn.style.color = ''; };
+      recog.onend = () => { micBtn.textContent = '\uD83C\uDFA4'; micBtn.style.color = ''; };
+      recog.start();
+    };
+
+    window.__aiClose = () => {
+      if(window.speechSynthesis) window.speechSynthesis.cancel();
+      overlay.classList.remove('show');
+      window.__aiSend = null;
+      window.__aiMic = null;
+      window.__aiClose = null;
+      setTimeout(resolve, 400);
+    };
+  });
+}
+
+async function openAIChat(){
+  await showAIChatModal();
+  renderActions();
+}
+
+async function manualParrainage(){
+  flags.parrainage = true; renderStatut();
+  await showChecklistModal('Engagement coopératif', 'Parrainage', ['Nouveau membre parrainé, actif après 6 mois ✓']);
+}
+async function manualCoop(){
+  flags.viecoop = true; renderStatut();
+  await showChecklistModal('Engagement coopératif', 'Vie coopérative', ["Vote enregistré à l'assemblée générale ✓"]);
+}
+async function manualAssurance(){
+  flags.assurance = true; renderStatut();
+  await showChecklistModal('Assurances', 'Assurance souscrite', ['Assurance habitation et auto actives ✓']);
+}
+async function manualAssurancePersonne(){
+  flags.assurancePersonne = true; renderStatut();
+  await showChecklistModal('Assurances', 'Assurance de personne souscrite', ['Assurance vie et invalidité actives ✓']);
+}
+
+function enableManualMode(){
+  stopRequested = false;
+  activeCancel = null;
+  renderActions();
+}
+function disableManualMode(){
+}
+
+/* --- simulation modals (ralenties) --- */
+
+function showChecklistModal(cat, title, lines){
+  return new Promise(resolve => {
+    if(stopRequested){ resolve(); return; }
+    const overlay = document.getElementById('simOverlay');
+    const modal = document.getElementById('simModal');
+    modal.className = 'sim-modal';
+    const linesHtml = lines.map((l,i) => '<div class="sim-line" style="animation-delay:'+(i*1.0)+'s">'+l+'</div>').join('');
+    modal.innerHTML = '<div class="sim-modal-cat">'+cat+'</div><div class="sim-modal-title">'+title+'</div><div class="sim-modal-body">'+linesHtml+'</div>';
+    overlay.classList.add('show');
+    const totalMs = lines.length*1000 + 2400;
+    function finish(){ overlay.classList.remove('show'); activeCancel = null; setTimeout(resolve, stopRequested ? 0 : 900); }
+    const id = setTimeout(finish, totalMs);
+    activeCancel = () => { clearTimeout(id); finish(); };
+  });
+}
+
+function showCounterModal(cat, title, from, to){
+  return new Promise(resolve => {
+    if(stopRequested){ resolve(); return; }
+    const overlay = document.getElementById('simOverlay');
+    const modal = document.getElementById('simModal');
+    modal.className = 'sim-modal';
+    modal.innerHTML = '<div class="sim-modal-cat">'+cat+'</div><div class="sim-modal-title">'+title+'</div><div class="sim-modal-body"><div class="sim-counter" id="simCounterVal">'+fmt(from)+'</div><div class="sim-sub" id="simCounterSub">Accumulation en cours...</div></div>';
+    overlay.classList.add('show');
+    const dur = 5200;
+    const start = performance.now();
+    const el = document.getElementById('simCounterVal');
+    let rafId = null, holdId = null, finished = false;
+    function finish(){
+      if(finished) return; finished = true;
+      overlay.classList.remove('show'); activeCancel = null;
+      setTimeout(resolve, stopRequested ? 0 : 700);
+    }
+    function step(now){
+      if(stopRequested){ finish(); return; }
+      const t = Math.min(1, (now-start)/dur);
+      const eased = 1 - Math.pow(1-t, 2);
+      el.textContent = fmt(from + (to-from)*eased);
+      if(t < 1){ rafId = requestAnimationFrame(step); }
+      else {
+        document.getElementById('simCounterSub').textContent = 'Objectif atteint ✓';
+        holdId = setTimeout(finish, 3600);
+      }
+    }
+    rafId = requestAnimationFrame(step);
+    activeCancel = () => { if(rafId) cancelAnimationFrame(rafId); if(holdId) clearTimeout(holdId); finish(); };
+  });
+}
+
+function showTierModal(tier){
+  return new Promise(resolve => {
+    if(stopRequested){ resolve(); return; }
+    const overlay = document.getElementById('simOverlay');
+    const modal = document.getElementById('simModal');
+    modal.className = 'sim-modal tier-modal';
+    const linesHtml = tier.perks.map((p,i) => '<div class="sim-line" style="animation-delay:'+(0.4+i*0.9)+'s">✓ '+p+'</div>').join('');
+    modal.innerHTML =
+      '<div style="text-align:center"><span class="tier-modal-badge">'+t_range(tier)+'</span></div>'+
+      '<div class="sim-modal-title" style="margin-top:8px">Nouveau palier débloqué<br>'+tier.name+'</div>'+
+      '<div class="sim-modal-body" style="margin-top:8px">'+linesHtml+'</div>';
+    overlay.classList.add('show');
+    const totalMs = 1400 + tier.perks.length*900 + 2600;
+    function finish(){ overlay.classList.remove('show'); activeCancel = null; setTimeout(resolve, stopRequested ? 0 : 700); }
+    const id = setTimeout(finish, totalMs);
+    activeCancel = () => { clearTimeout(id); finish(); };
+  });
+}
+
+function showTierOverviewModal(tier){
+  return new Promise(resolve => {
+    if(stopRequested){ resolve(); return; }
+    const overlay = document.getElementById('simOverlay');
+    const modal = document.getElementById('simModal');
+    modal.className = 'sim-modal tier-modal';
+    modal.innerHTML =
+      '<div style="text-align:center"><span class="tier-modal-badge">'+t_range(tier)+'</span></div>'+
+      '<div class="sim-modal-title" style="margin-top:8px">'+tier.name+'</div>'+
+      '<div class="sim-modal-body" style="margin-top:8px"><div class="sim-line" style="animation-delay:0.5s">• '+tier.perks[0]+'</div></div>';
+    overlay.classList.add('show');
+    const totalMs = 2600;
+    function finish(){ overlay.classList.remove('show'); activeCancel = null; setTimeout(resolve, stopRequested ? 0 : 700); }
+    const id = setTimeout(finish, totalMs);
+    activeCancel = () => { clearTimeout(id); finish(); };
+  });
+}
+function t_range(tier){ return tier.min + '-' + tier.max + ' pts'; }
+
+function showStartPrompt(){
+  return new Promise(resolve => {
+    const overlay = document.getElementById('simOverlay');
+    const modal = document.getElementById('simModal');
+    modal.className = 'sim-modal tier-modal';
+    modal.innerHTML =
+      '<div class="sim-modal-title">Lancer la simulation ?</div>'+
+      '<div class="sim-modal-body" style="margin-top:10px"><div class="sim-line" style="opacity:1">Une démonstration automatique du parcours d\u2019un membre, du niveau Fondation jusqu\u2019à Partenaire.</div></div>'+
+      '<div style="display:flex;gap:10px;margin-top:20px">'+
+        '<button style="flex:1;background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-family:var(--sans);font-weight:500" onclick="window.__startPromptResolve(\'no\')">Non</button>'+
+        '<button style="flex:1;background:var(--gold);color:var(--forest-dark);border:none;border-radius:8px;padding:11px;font-size:13px;font-family:var(--sans);font-weight:600" onclick="window.__startPromptResolve(\'yes\')">Oui</button>'+
+      '</div>'+
+      '<button style="width:100%;background:none;color:rgba(255,255,255,0.7);border:none;border-bottom:1px solid rgba(255,255,255,0.3);padding:8px;margin-top:10px;font-size:12px;font-family:var(--sans)" onclick="window.__startPromptResolve(\'end\')">Aller directement à la fin →</button>';
+    overlay.classList.add('show');
+    window.__startPromptResolve = (val) => {
+      overlay.classList.remove('show');
+      window.__startPromptResolve = null;
+      setTimeout(() => resolve(val), 400);
+    };
+  });
+}
+
+function showCoussinGaugeModal(){
+  return new Promise(resolve => {
+    if(stopRequested){ resolve(); return; }
+    const overlay = document.getElementById('simOverlay');
+    const modal = document.getElementById('simModal');
+    modal.className = 'sim-modal tier-modal';
+    modal.innerHTML =
+      '<div class="sim-modal-cat">Santé financière</div>'+
+      '<div class="sim-modal-title">Coussin d\u2019urgence</div>'+
+      '<div style="position:relative;margin-top:8px" id="coussinGaugeWrap">'+buildGaugeSVG(0)+
+      '<div style="position:absolute;left:0;right:0;top:58px;text-align:center;font-family:var(--serif);font-size:28px;color:#fff" id="coussinGaugePct">0 %</div></div>'+
+      '<div style="text-align:center;font-family:var(--serif);font-size:18px;color:#F6EDD8;margin-top:2px" id="coussinGaugeAmt">0,00 $</div>'+
+      '<div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:12px;text-align:center">Cible : '+fmt(COUSSIN_CIBLE)+' — maintenue 6 mois</div>';
+    overlay.classList.add('show');
+
+    let raf = null, finished = false;
+    const dur = 3600;
+    const start = performance.now();
+
+    function finish(){
+      if(finished) return; finished = true;
+      overlay.classList.remove('show'); activeCancel = null;
+      setTimeout(resolve, stopRequested ? 0 : 700);
+    }
+    function step(now){
+      if(stopRequested){ finish(); return; }
+      const t = Math.min(1, (now-start)/dur);
+      const eased = 1 - Math.pow(1-t, 2);
+      const pct = Math.round(eased * 100);
+      const wrap = document.getElementById('coussinGaugeWrap');
+      if(wrap){
+        wrap.innerHTML = buildGaugeSVG(pct) + '<div style="position:absolute;left:0;right:0;top:58px;text-align:center;font-family:var(--serif);font-size:28px;color:#fff">'+pct+' %</div>';
+        document.getElementById('coussinGaugeAmt').textContent = fmt(eased * COUSSIN_CIBLE);
+      }
+      if(t < 1){ raf = requestAnimationFrame(step); }
+      else {
+        const holdId = setTimeout(finish, 2400);
+        activeCancel = () => { clearTimeout(holdId); finish(); };
+      }
+    }
+    raf = requestAnimationFrame(step);
+    activeCancel = () => { if(raf) cancelAnimationFrame(raf); finish(); };
+  });
+}
+
+function showStatementModal(){
+  return new Promise(resolve => {
+    if(stopRequested){ resolve(); return; }
+    const overlay = document.getElementById('simOverlay');
+    const modal = document.getElementById('simModal');
+    modal.className = 'sim-modal tier-modal';
+    modal.innerHTML =
+      '<div class="sim-line" style="animation-delay:0.4s;font-size:16px;text-align:center">Ce n\u2019est plus ce que <strong>vous possédez</strong> qui compte.</div>'+
+      '<div class="sim-line" style="animation-delay:2.2s;font-size:16px;text-align:center;margin-top:8px">C\u2019est <strong>votre engagement</strong>.</div>';
+    overlay.classList.add('show');
+    const totalMs = 5200;
+    function finish(){ overlay.classList.remove('show'); activeCancel = null; setTimeout(resolve, stopRequested ? 0 : 900); }
+    const id = setTimeout(finish, totalMs);
+    activeCancel = () => { clearTimeout(id); finish(); };
+  });
+}
+
+function showForfaitPhilosophyModal(){
+  return new Promise(resolve => {
+    if(stopRequested){ resolve(); return; }
+    const overlay = document.getElementById('simOverlay');
+    const modal = document.getElementById('simModal');
+    modal.className = 'sim-modal tier-modal';
+    modal.innerHTML =
+      '<div class="sim-line" style="animation-delay:0.4s;font-size:12px;letter-spacing:.4px;color:#C89B3C;text-transform:uppercase;text-align:center">Avant</div>'+
+      '<div class="sim-line" style="animation-delay:0.9s;font-size:14.5px;text-align:center;margin-top:4px">La gratuité s\u2019obtenait par un <strong>solde compensatoire</strong> — un avantage réservé à ceux qui avaient déjà les moyens.</div>'+
+      '<div class="sim-line" style="animation-delay:3.0s;font-size:12px;letter-spacing:.4px;color:#C89B3C;text-transform:uppercase;text-align:center;margin-top:18px">Aujourd\u2019hui</div>'+
+      '<div class="sim-line" style="animation-delay:3.5s;font-size:14.5px;text-align:center;margin-top:4px">On garde les forfaits, mais la gratuité s\u2019obtient par ton <strong>engagement</strong> — peu importe ce que tu as en banque.</div>';
+    overlay.classList.add('show');
+    const totalMs = 8200;
+    function finish(){ overlay.classList.remove('show'); activeCancel = null; setTimeout(resolve, stopRequested ? 0 : 900); }
+    const id = setTimeout(finish, totalMs);
+    activeCancel = () => { clearTimeout(id); finish(); };
+  });
+}
+
+function showForfaitChoiceModal(){
+  return new Promise(resolve => {
+    const overlay = document.getElementById('simOverlay');
+    const modal = document.getElementById('simModal');
+    modal.className = 'sim-modal tier-modal';
+    const linesHtml = forfaits.map(f =>
+      '<div class="sim-line" style="opacity:1;display:flex;justify-content:space-between;padding:6px 0"><span>'+f.name+'</span><span style="color:var(--gold)">'+f.price+(f.unit?' '+f.unit:'')+'</span></div>'
+    ).join('');
+    modal.innerHTML =
+      '<div class="sim-modal-title">Choisis ton forfait</div>'+
+      '<div class="sim-modal-body" style="margin-top:8px">'+linesHtml+'</div>'+
+      '<div style="display:flex;gap:10px;margin-top:18px">'+
+        '<button style="flex:1;background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-family:var(--sans);font-weight:500" onclick="window.__forfaitResolve(\'econome\')">Économe</button>'+
+        '<button style="flex:1;background:var(--gold);color:var(--forest-dark);border:none;border-radius:8px;padding:11px;font-size:13px;font-family:var(--sans);font-weight:600" onclick="window.__forfaitResolve(\'illimite\')">Illimité</button>'+
+      '</div>';
+    overlay.classList.add('show');
+    window.__forfaitResolve = (val) => {
+      overlay.classList.remove('show');
+      window.__forfaitResolve = null;
+      setTimeout(() => resolve(val), 400);
+    };
+  });
+}
+
+/* --- director --- */
+
+async function runStep(step, myRun){
+  if(isStale(myRun)) return;
+  goTo(step.view);
+  await pause(1400);
+  if(isStale(myRun)) return;
+  const before = computeStatus();
+  if(step.action) await step.action();
+  renderTotal(); renderAccounts(); renderTx();
+  renderStatut();
+  if(step.modal) await step.modal();
+  if(isStale(myRun)) return;
+  const after = computeStatus();
+  if(after.tier.level > before.tier.level){
+    goTo('statut');
+    await pause(500);
+    if(isStale(myRun)) return;
+    await showTierModal(after.tier);
+  }
+  await pause(1600);
+}
+
+async function runIntro(myRun){
+  goTo('niveaux');
+  await pause(400);
+  for(const tier of tiers){
+    if(isStale(myRun)) return;
+    tiers.forEach(t => {
+      const el = document.getElementById('niveauCard-' + t.level);
+      if(!el) return;
+      if(t.level === tier.level){
+        el.classList.add('spotlight');
+        el.classList.remove('dim');
+        if(typeof el.scrollIntoView === 'function'){
+          try{ el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+        }
+      } else {
+        el.classList.remove('spotlight');
+        el.classList.add('dim');
+      }
+    });
+    await pause(2000);
+  }
+  if(isStale(myRun)) return;
+  tiers.forEach(t => {
+    const el = document.getElementById('niveauCard-' + t.level);
+    if(el){ el.classList.remove('spotlight'); el.classList.remove('dim'); }
+  });
+  await pause(300);
+}
+
+async function runComportementsOverview(myRun){
+  goTo('statut');
+  await pause(800);
+  const cats = [];
+  getDetections().forEach(d => { if(cats.indexOf(d.cat) === -1) cats.push(d.cat); });
+  for(let i = 0; i < cats.length; i++){
+    if(isStale(myRun)) return;
+    cats.forEach((c, j) => {
+      const el = document.getElementById('catGroup-' + j);
+      if(!el) return;
+      if(j === i){
+        el.classList.add('spotlight');
+        el.classList.remove('dim');
+        if(typeof el.scrollIntoView === 'function'){
+          try{ el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+        }
+      } else {
+        el.classList.remove('spotlight');
+        el.classList.add('dim');
+      }
+    });
+    await pause(2400);
+  }
+  if(isStale(myRun)) return;
+  cats.forEach((c, j) => {
+    const el = document.getElementById('catGroup-' + j);
+    if(el){ el.classList.remove('spotlight'); el.classList.remove('dim'); }
+  });
+  await pause(500);
+}
+
+async function runBilanReveal(myRun){
+  goTo('bilan');
+  await pause(1000);
+  const items = document.querySelectorAll('#bilanItems .bilan-item');
+  for(let i = 0; i < items.length; i++){
+    if(isStale(myRun)) return;
+    items.forEach((el, j) => {
+      if(j === i){
+        el.classList.add('spotlight');
+        el.classList.remove('dim');
+        if(typeof el.scrollIntoView === 'function'){
+          try{ el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+        }
+      } else {
+        el.classList.remove('spotlight');
+        el.classList.add('dim');
+      }
+    });
+    await pause(2600);
+  }
+  if(isStale(myRun)) return;
+  items.forEach(el => { el.classList.remove('spotlight'); el.classList.remove('dim'); });
+  await pause(2500);
+}
+
+let chosenForfait = null;
+
+const simPhases = [
+  { run: async (myRun) => {
+      goTo('comptes');
+      await pause(1400);
+      if(!isStale(myRun)) await showStatementModal();
+      if(!isStale(myRun)) await pause(400);
+    } },
+  { run: async (myRun) => {
+      if(!isStale(myRun)) await showChecklistModal('', 'Voici un résumé rapide des niveaux d\u2019engagement', ["Cinq paliers, du plus accessible au plus avantageux."]);
+    } },
+  { run: async (myRun) => { await runIntro(myRun); } },
+  { run: async (myRun) => {
+      if(!isStale(myRun)) await showChecklistModal('', 'Comment y arriver', ["Ayant vu les niveaux d'engagement, voici les comportements qui vous permettent de les atteindre."]);
+    } },
+  { run: async (myRun) => { await runComportementsOverview(myRun); } },
+  { run: async (myRun) => {
+      if(!isStale(myRun)) await showChecklistModal('', 'Le choix du forfait', ["Ayant vu les niveaux et les comportements, c'est maintenant le moment de choisir votre forfait."]);
+    } },
+  { run: async (myRun) => {
+      if(isStale(myRun)) return;
+      goTo('forfaits');
+      await pause(900);
+      if(!isStale(myRun)) chosenForfait = await showForfaitChoiceModal();
+      if(!isStale(myRun)) await pause(500);
+    } },
+  { run: async (myRun) => {
+      if(!isStale(myRun)) await showChecklistModal('', 'Après quelques mois', ["Simulons ce qu'un membre a déjà comme comportement après quelques mois d'utilisation."]);
+    } },
+  { run: async (myRun) => {
+      if(!isStale(myRun)){ goTo('comptes'); await pause(1200); }
+    } },
+  { run: (myRun) => runStep({
+      view:'comptes',
+      action: () => {
+        if(!flags.salaire){ addTx('Dépôt de paie', 1840.00, 'salaire'); bumpBalance('cheque', 1840.00); }
+        flags.salaire = true;
+      },
+      modal: () => showChecklistModal('Transactionnels', 'Dépôt du salaire', ['Dépôt récurrent mensuel : 1 840,00 $ ✓'])
+    }, myRun) },
+  { run: (myRun) => runStep({
+      view:'statut',
+      action: () => {
+        flags.relationActive = true; flags.prelevementAuto = true;
+        if(!flags.epargneSystematique){ doTransfer('cheque','epargne',200.00); }
+        flags.epargneSystematique = true;
+        flags.decouvert = true; flags.paiementsATemps = true; flags.outilBudgetaire = true;
+      },
+      modal: () => showChecklistModal('Transactionnels et gestion financière', 'Bonne tenue de compte', ['Relation active, prélèvement et épargne systématique ✓','Aucun découvert, paiements à temps, outil budgétaire ✓'])
+    }, myRun) },
+  { run: (myRun) => runStep({
+      view:'statut',
+      action: () => {
+        if(!flags.coussin100){ bumpBalance('urgence', COUSSIN_CIBLE); }
+        flags.coussin25 = true; flags.coussin50 = true; flags.coussin75 = true; flags.coussin100 = true; flags.maintienCoussin = true;
+        flags.formation = true;
+      },
+      modal: () => showCoussinGaugeModal()
+    }, myRun) },
+  { run: async (myRun) => {
+      if(!isStale(myRun)) await showChecklistModal('', 'Encore quelques mois', ["On avance maintenant à la fin de la simulation, après quelques mois d'utilisation."]);
+    } },
+  { run: (myRun) => runStep({
+      view:'statut',
+      action: () => {
+        flags.assurance = true; flags.assurancePersonne = true; flags.hypothequeAtout = true; flags.margePersonnelle = true;
+      },
+      modal: () => showChecklistModal('Financement et assurances', 'Protection complète', ['Assurances de dommages et de personnes souscrites ✓','Hypothèque / marge Atout et marge personnelle détenues ✓'])
+    }, myRun) },
+  { run: async (myRun) => {
+      if(!isStale(myRun)) await showChecklistModal('', 'Le bilan', ["Voici, un à un, les avantages que ces comportements lui ont rapportés."]);
+    } },
+  { run: async (myRun) => { await runBilanReveal(myRun); } },
+  { run: async (myRun) => {
+      if(!isStale(myRun)) await showChecklistModal('', 'À toi de jouer', ["On vous laisse maintenant l'opportunité de découvrir l'application par vous-même."]);
+    } }
+];
+
+let simPhaseIndex = 0;
+
+function updateTopControls(){
+  const replayBtn = document.getElementById('replayBtn');
+  const restartBtn = document.getElementById('restartBtn');
+  if(simPhaseIndex > 0 && simPhaseIndex < simPhases.length){
+    replayBtn.textContent = '▶ Reprendre';
+    replayBtn.onclick = resumeSimulation;
+    restartBtn.classList.add('show');
+  } else {
+    replayBtn.textContent = '↻ Rejouer';
+    replayBtn.onclick = runSimulation;
+    restartBtn.classList.remove('show');
+  }
+}
+
+async function runSimulationFrom(startIndex){
+  const myRun = ++simRunId;
+  stopRequested = false;
+  activeCancel = null;
+  const replayBtn = document.getElementById('replayBtn');
+  replayBtn.classList.remove('show');
+  document.getElementById('restartBtn').classList.remove('show');
+  document.getElementById('stopBtn').classList.add('show');
+  document.getElementById('skipBtn').classList.add('show');
+  disableManualMode();
+
+  if(startIndex === 0){
+    resetState();
+    renderTotal(); renderAccounts(); renderTx(); renderStatut();
+  }
+
+  for(let i = startIndex; i < simPhases.length; i++){
+    simPhaseIndex = i;
+    await simPhases[i].run(myRun);
+    if(stopRequested){
+      if(simRunId === myRun) updateTopControls();
+      break;
+    }
+  }
+
+  if(simRunId !== myRun) return;
+  const wasStopped = stopRequested;
+  document.getElementById('stopBtn').classList.remove('show');
+  document.getElementById('skipBtn').classList.remove('show');
+  enableManualMode();
+  if(!wasStopped){
+    simPhaseIndex = 0;
+  }
+  updateTopControls();
+  replayBtn.classList.add('show');
+}
+
+async function runSimulation(){
+  await runSimulationFrom(0);
+}
+
+async function resumeSimulation(){
+  await runSimulationFrom(simPhaseIndex);
+}
+
+function applyFullEndState(){
+  if(!flags.salaire){ addTx('Dépôt de paie', 1840.00, 'salaire'); bumpBalance('cheque', 1840.00); }
+  flags.salaire = true; flags.relationActive = true; flags.prelevementAuto = true;
+  if(!flags.epargneSystematique){ doTransfer('cheque','epargne',200.00); }
+  flags.epargneSystematique = true;
+  flags.decouvert = true; flags.paiementsATemps = true;
+  flags.outilBudgetaire = true;
+  if(!flags.coussin100){ bumpBalance('urgence', COUSSIN_CIBLE); }
+  flags.coussin25 = true; flags.coussin50 = true; flags.coussin75 = true; flags.coussin100 = true; flags.maintienCoussin = true;
+  flags.formation = true;
+  flags.assurance = true; flags.assurancePersonne = true; flags.hypothequeAtout = true; flags.margePersonnelle = true;
+  flags.parrainage = true; flags.viecoop = true; flags.relevesVirtuels = true;
+  flags.epargnePlacementBracket = '10k-49999';
+}
+
+function skipToEnd(){
+  if(stopRequested) return;
+  stopRequested = true;
+  simRunId++;
+  if(activeCancel){ activeCancel(); }
+
+  applyFullEndState();
+  simPhaseIndex = 0;
+
+  document.getElementById('simOverlay').classList.remove('show');
+  renderTotal(); renderAccounts(); renderTx();
+  renderStatut();
+  goTo('statut');
+
+  document.getElementById('stopBtn').classList.remove('show');
+  document.getElementById('skipBtn').classList.remove('show');
+  document.getElementById('restartBtn').classList.remove('show');
+  enableManualMode();
+  updateTopControls();
+  document.getElementById('replayBtn').classList.add('show');
+}
+
+function jumpToEnd(){
+  simRunId++;
+  stopRequested = false;
+  simPhaseIndex = 0;
+  resetState();
+  applyFullEndState();
+  renderTotal(); renderAccounts(); renderTx();
+  renderStatut();
+  goTo('statut');
+  document.getElementById('stopBtn').classList.remove('show');
+  document.getElementById('skipBtn').classList.remove('show');
+  document.getElementById('restartBtn').classList.remove('show');
+  enableManualMode();
+  updateTopControls();
+  document.getElementById('replayBtn').classList.add('show');
+}
+
+const BUDGET_CATEGORIES = [
+  {id:'budgetLogement', label:'Logement', color:'#F6EDD8', def:650},
+  {id:'budgetAlimentation', label:'Alimentation', color:'#C89B3C', def:350},
+  {id:'budgetTransport', label:'Transport', color:'#7FA396', def:120},
+  {id:'budgetLoisirs', label:'Loisirs', color:'#B4855E', def:80},
+  {id:'budgetEpargne', label:'Épargne', color:'#2F6B4F', def:200}
+];
+
+function renderBudgetCatRows(){
+  const el = document.getElementById('budgetCatRows');
+  if(!el) return;
+  el.innerHTML = BUDGET_CATEGORIES.map(c =>
+    '<div class="budget-cat-row">'+
+      '<label for="'+c.id+'">'+c.label+'</label>'+
+      '<input type="number" id="'+c.id+'" value="'+c.def+'" oninput="recalcBudget()">'+
+      '<input type="number" id="'+c.id+'Reel" value="'+c.def+'" oninput="recalcBudget()">'+
+    '</div>'
+  ).join('');
+}
+
+function recalcBudget(){
+  const income = parseFloat(document.getElementById('budgetIncome').value) || 0;
+  const values = {};
+  const reelValues = {};
+  BUDGET_CATEGORIES.forEach(c => {
+    values[c.id] = parseFloat(document.getElementById(c.id).value) || 0;
+    const reelEl = document.getElementById(c.id + 'Reel');
+    reelValues[c.id] = reelEl ? (parseFloat(reelEl.value) || 0) : values[c.id];
+    if(reelEl) reelEl.classList.toggle('reel-over', reelValues[c.id] > values[c.id]);
+  });
+  const expenses = BUDGET_CATEGORIES.reduce((s,c) => s + values[c.id], 0);
+  const reelExpenses = BUDGET_CATEGORIES.reduce((s,c) => s + reelValues[c.id], 0);
+  const remaining = income - expenses;
+  const ecartTotal = expenses - reelExpenses; // positif = a dépensé moins que prévu
+
+  const remEl = document.getElementById('budgetRemaining');
+  remEl.textContent = fmt(remaining);
+  remEl.style.color = remaining < 0 ? '#F0C9C0' : '#fff';
+
+  const ecartEl = document.getElementById('budgetEcartTotal');
+  const ecartNoteEl = document.getElementById('budgetEcartNote');
+  if(ecartEl){
+    ecartEl.textContent = (ecartTotal >= 0 ? '+' : '') + fmt(ecartTotal);
+    ecartEl.className = 'budget-ecart-amount ' + (ecartTotal < 0 ? 'over' : 'under');
+    ecartNoteEl.textContent = ecartTotal < 0
+      ? 'Dépenses réelles supérieures au budget de ' + fmt(Math.abs(ecartTotal)) + '.'
+      : (ecartTotal > 0 ? 'Dépenses réelles inférieures au budget de ' + fmt(ecartTotal) + '.' : 'Dépenses réelles conformes au budget.');
+  }
+
+  const barEl = document.getElementById('budgetBar');
+  const legendEl = document.getElementById('budgetLegend');
+  if(barEl && income > 0){
+    let segHtml = '';
+    let legendHtml = '';
+    BUDGET_CATEGORIES.forEach(c => {
+      const pct = Math.max(0, Math.min(100, (values[c.id] / income) * 100));
+      segHtml += '<div class="budget-bar-seg" style="width:'+pct+'%;background:'+c.color+'"></div>';
+      legendHtml += '<div class="budget-legend-item"><span class="budget-legend-dot" style="background:'+c.color+'"></span>'+c.label+' — '+Math.round(pct)+' %</div>';
+    });
+    barEl.innerHTML = segHtml;
+    legendEl.innerHTML = legendHtml;
+  }
+
+  const tipsEl = document.getElementById('budgetTips');
+  if(tipsEl){
+    const tips = [];
+    const logementPct = income > 0 ? (values.budgetLogement / income) * 100 : 0;
+    const epargnePct = income > 0 ? (values.budgetEpargne / income) * 100 : 0;
+
+    if(remaining < 0){
+      tips.push({type:'warn', icon:'⚠️', text:'Tes dépenses dépassent ton revenu de ' + fmt(Math.abs(remaining)) + ' ce mois-ci. Regarde en premier les postes Loisirs et Alimentation.'});
+    }
+    if(ecartTotal < 0){
+      tips.push({type:'warn', icon:'📉', text:'Tes dépenses réelles dépassent ton budget de ' + fmt(Math.abs(ecartTotal)) + ' ce mois-ci — vérifie quels postes ont dérapé.'});
+    }
+    if(logementPct > 35){
+      tips.push({type:'warn', icon:'🏠', text:'Le logement représente ' + Math.round(logementPct) + ' % de ton revenu — au-delà de 35 %, ça laisse peu de marge pour le reste.'});
+    }
+    if(epargnePct < 10 && income > 0){
+      tips.push({type:'warn', icon:'💰', text:"Seulement " + Math.round(epargnePct) + ' % de ton revenu va à l\u2019épargne. Viser au moins 10 % aide à faire progresser ton coussin d\u2019urgence plus vite.'});
+    }
+    if(remaining >= 0 && epargnePct >= 10 && logementPct <= 35 && ecartTotal >= 0){
+      tips.push({type:'good', icon:'✓', text:'Ton budget est équilibré, et tes dépenses réelles respectent ce que tu avais prévu.'});
+    }
+    if(remaining > 0 && (income - expenses) > values.budgetEpargne){
+      tips.push({type:'', icon:'💡', text:'Il te reste ' + fmt(remaining) + ' non alloués dans ton budget. Tu pourrais les ajouter à ton coussin d\u2019urgence ou à tes placements.'});
+    }
+    tipsEl.innerHTML = tips.map(t => '<div class="budget-tip '+t.type+'"><span class="budget-tip-icon">'+t.icon+'</span><span>'+t.text+'</span></div>').join('');
+  }
+}
+
+async function saveBudget(){
+  recalcBudget();
+  const wasAlreadyDone = flags.outilBudgetaire;
+  flags.outilBudgetaire = true;
+  renderStatut();
+  const note = document.getElementById('budgetSavedNote');
+  document.getElementById('budgetSavedDate').textContent = "aujourd'hui";
+  note.style.display = 'block';
+  await showChecklistModal('Gestion financière', wasAlreadyDone ? 'Budget mis à jour' : 'Outil budgétaire',
+    wasAlreadyDone
+      ? ['Budget mensuel mis à jour ✓']
+      : ['Outil budgétaire (lecture annuelle) et plan financier complétés ✓']
+  );
+}
+
+async function init(){
+  resetState();
+  renderTotal(); renderAccounts(); renderTx(); renderStatut();
+  goTo('comptes');
+  const answer = await showStartPrompt();
+  if(answer === 'yes'){
+    runSimulation();
+  } else if(answer === 'end'){
+    jumpToEnd();
+  } else {
+    enableManualMode();
+    const btn = document.getElementById('replayBtn');
+    btn.textContent = '▶ Lancer';
+    btn.classList.add('show');
+  }
+}
+
+renderForfaits();
+renderBudgetCatRows();
+recalcBudget();
+init();
+</script>
+
+</body>
+</html>
